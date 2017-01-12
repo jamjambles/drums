@@ -1,4 +1,5 @@
-//runs on the atmega2560
+//Drum sequencer by James Wagner. For use with arduino mega2560
+
 
 //sequence specs
 #define NUMBER_OF_STEPS_PER_BEAT 4
@@ -26,21 +27,19 @@
 #define RIDE_OFFSET   5
 #define FTOM_OFFSET   6
 
-//hit strengths. Provide ability to accent notes
-#define WELL    255
+//hit strengths. Provides ability to accent notes
+#define HARD    255
 #define MED     230
-#define RARE    200
+#define SOFT    200
 #define NO_HIT  0
 
 //interupt pins
-const byte PULSE_IN = 19; // The beats from the algo
+const byte PULSE_IN = 19; // The beats from the pi
 const byte MUTE_IN = 20; // Will mute/unmute the drums
-const byte PHASE_RST_IN = 21; // Correct any phase issues during performance
+const byte PHASE_RST_IN = 21; // Correct any phase issues during performance. Not implemented
 
-//count in
-#define NUMBER_OF_COUNT_IN_BARS 1
 
-//drum pins
+//output drum pins
 #define SNARE 2
 #define KICK  3
 #define HAT   5
@@ -56,7 +55,7 @@ const byte PHASE_RST_IN = 21; // Correct any phase issues during performance
 #define TIMER_TIME    5 //ms
 #define TIMER_COUNTS  ((TIMER_TIME*10^-3 / TIMER_RES) -1)
 
-//drum times
+//drum times: how long each drum strike is
 #define KICK_TIME   90 //ms
 #define SNARE_TIME  40  //ms  
 #define HAT_TIME    40  //ms
@@ -82,10 +81,10 @@ volatile int t1_multiple_of_5;
 volatile int r_multiple_of_5;
 volatile int ft_multiple_of_5;
 
+//index to sequence array
 volatile int seq_count;
-volatile int count_in;
+//mute drums
 volatile bool mute_flag;
-volatile int global_count;
 
 #ifdef PROGMEM_SET
 const PROGMEM unsigned int sequence[NUMBER_OF_STEPS*NUMBER_OF_DRUMS]  = 
@@ -94,27 +93,31 @@ const unsigned int sequence[(NUMBER_OF_STEPS)*NUMBER_OF_DRUMS]  =
 #endif
 {
 //Order of drums: snare, kick, hat, crash, tom1, ride, floor tom//
-NO_HIT,WELL,WELL,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,WELL,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,WELL,WELL,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,WELL,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+//Accents: HARD, MED, SOFT, NO_HIT
 
-NO_HIT,WELL,WELL,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,WELL,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,WELL,WELL,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,WELL,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-
-NO_HIT,WELL,WELL,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,WELL,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,WELL,WELL,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,WELL,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-
-NO_HIT,WELL,WELL,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,WELL,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,WELL,WELL,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,WELL,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-
-
+///////////////////////////////////
+//Example using semi-quaver notes//
+///////////////////////////////////
+//Bar 1, beat 1
+NO_HIT,HARD,HARD,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+//Bar 1, beat 2
+HARD,NO_HIT,HARD,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+//Bar 1, beat 3
+NO_HIT,HARD,HARD,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,MED,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+//Bar 1, beat 4
+HARD,NO_HIT,HARD,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT
 };
 //pwm stuff
 int eraser = 7;
@@ -135,7 +138,7 @@ void setup() {
   TCCR1B = 0;
   interrupts();            
 
-  attachInterrupt(digitalPinToInterrupt(MUTE_IN),mute,HIGH);
+  attachInterrupt(digitalPinToInterrupt(MUTE_IN),mute,HIGH); //Mute/unmute drums
   attachInterrupt(digitalPinToInterrupt(MUTE_IN),unmute,LOW);
   attachInterrupt(digitalPinToInterrupt(PULSE_IN),write_drums_high,RISING); //Whenever pin 19 goes from low to high write drums
  
@@ -148,8 +151,8 @@ void setup() {
   tom1_active = false;
   ride_active = false;
   ftom_active = false;
-
-  count_in = NUMBER_OF_COUNT_IN_BARS*NUMBER_OF_BEATS_PER_BAR*NUMBER_OF_STEPS_PER_BEAT;
+  
+  //default to drums on
   mute_flag = false;
   
   s_multiple_of_5 = 0;
@@ -163,7 +166,6 @@ void setup() {
   //setting pwm frequency to 31KHz on pins 2,3,5,6,7,8,9,10
   set_pwm_2_3_5_6_7_8_9_10(); 
 
-  global_count = 0;
 }
 
 void loop() {
@@ -175,21 +177,19 @@ void mute(){
 }
 
 void unmute(){
-  seq_count = global_count%4;
+  seq_count = 0;
   
   mute_flag = false;
 }
 
 void phase_rst(){
-  seq_count = 0; 
-  
+  seq_count = 0;   
 }
 
 
 void write_drums_high()
 {
-  global_count++;
-  //if(mute_flag == false && count_in == 0)
+
   if(mute_flag == false)
   { 
     bool is_hit = false;
@@ -301,15 +301,7 @@ void write_drums_high()
     seq_count++;
     seq_count = seq_count % NUMBER_OF_STEPS;
   }
-  else
-  {
-    
-  }
-  
-  //else if(mute_flag == false && count_in > 0)
-  //{
-  //  count_in--;
-  //}
+
 }
 
 ISR(TIMER1_COMPA_vect)
