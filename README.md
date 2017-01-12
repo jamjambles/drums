@@ -1,2 +1,3 @@
 # drums
-Arduino code to control the drum machine
+Arduino code to control the drums.
+Requires 8 PWM outputs on hardware. Tested using the arduino mega 2560. 
