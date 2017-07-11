@@ -329,6 +329,8 @@ void set_pwm_2_3_5_6_7_8_9_10()
   TCCR2B |=prescaler; //Change frequency to 31KHz
 }
 
+// This whole thing is to map the buttons nicely to the drums,
+// without changing how the drums are addressed.
 int get_drum_index(int i) {
   int result = 0;
 
@@ -345,9 +347,9 @@ int get_drum_index(int i) {
   int row = button_num / 4 + 4*(block_num % 2);
   int col = button_num % 4 + 4*(block_num / 2);
 
-  if (row != 0) {
-    row--;
-  }
+  // this is to make the top drum start from zero
+  // if the row is -1, then it is one of the control rows. (play, pause, shift phase, etc.)
+  row--;
   
   result = col*7+row;
   
