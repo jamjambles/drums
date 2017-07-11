@@ -1,6 +1,49 @@
 //Drum sequencer by James Wagner. For use with arduino mega2560
 
 
+#include <Wire.h>
+#include "Adafruit_Trellis.h"
+
+/*************************************************** 
+  This example shows reading buttons and setting/clearing buttons in a loop
+  "momentary" mode has the LED light up only when a button is pressed
+  "latching" mode lets you turn the LED on/off when pressed
+
+  Up to 8 matrices can be used but this example will show 4 or 1
+ ****************************************************/
+
+#define MOMENTARY 0
+#define LATCHING 1
+// set the mode here
+#define MODE LATCHING 
+
+
+Adafruit_Trellis matrix0 = Adafruit_Trellis();
+Adafruit_Trellis matrix1 = Adafruit_Trellis();
+Adafruit_Trellis matrix2 = Adafruit_Trellis();
+Adafruit_Trellis matrix3 = Adafruit_Trellis();
+Adafruit_Trellis matrix4 = Adafruit_Trellis();
+Adafruit_Trellis matrix5 = Adafruit_Trellis();
+Adafruit_Trellis matrix6 = Adafruit_Trellis();
+Adafruit_Trellis matrix7 = Adafruit_Trellis();
+
+Adafruit_TrellisSet trellis =  Adafruit_TrellisSet(&matrix0, &matrix1, &matrix2, &matrix3,&matrix4, &matrix5, &matrix6, &matrix7);
+
+// set to however many you're working with here, up to 8
+#define NUMTRELLIS 8
+
+#define numKeys (NUMTRELLIS * 16)
+
+// Connect Trellis Vin to 5V and Ground to ground.
+// Connect the INT wire to pin #A2 (can change later!)
+#define INTPIN A2
+// Connect I2C SDA pin to your Arduino SDA line
+// Connect I2C SCL pin to your Arduino SCL line
+// All Trellises share the SDA, SCL and INT pin! 
+// Even 8 tiles use only 3 wires max
+
+//////// NOW THE DRUMS
+
 //sequence specs
 #define NUMBER_OF_STEPS_PER_BEAT 4
 #define NUMBER_OF_BARS 1
@@ -10,13 +53,6 @@
 #define REST 0
 #define NUMBER_OF_STEPS (NUMBER_OF_STEPS_PER_BEAT*NUMBER_OF_BEATS+REST)
 #define SEQUENCE_LENGTH (NUMBER_OF_STEPS*NUMBER_OF_DRUMS)
-
-//if sequence length is too long, store it in flash mem
-//3000 is somewhat arbitrary
-#if SEQUENCE_LENGTH > 3000
-  #include <avr/pgmspace.h> 
-  #define PROGMEM_SET
-#endif
 
 //sequence order
 #define SNARE_OFFSET  0
@@ -34,9 +70,8 @@
 #define NO_HIT  0
 
 //interupt pins
-const byte PULSE_IN = 19; // The beats from the pi
-const byte MUTE_IN = 20; // Will mute/unmute the drums
-const byte PHASE_RST_IN = 21; // Correct any phase issues during performance. Not implemented
+//const byte PULSE_IN = 20; // The beats from the pi
+const byte MUTE_IN = 19; // Will mute/unmute the drums
 
 
 //output drum pins
@@ -86,11 +121,7 @@ volatile int seq_count;
 //mute drums
 volatile bool mute_flag;
 
-#ifdef PROGMEM_SET
-const PROGMEM unsigned int sequence[NUMBER_OF_STEPS*NUMBER_OF_DRUMS]  = 
-#else
-const unsigned int sequence[(NUMBER_OF_STEPS)*NUMBER_OF_DRUMS]  = 
-#endif
+unsigned int sequence[(NUMBER_OF_STEPS)*NUMBER_OF_DRUMS]  = 
 {
 //Order of drums: snare, kick, hat, crash, tom1, ride, floor tom//
 //Accents: HARD, MED, SOFT, NO_HIT
@@ -99,78 +130,33 @@ const unsigned int sequence[(NUMBER_OF_STEPS)*NUMBER_OF_DRUMS]  =
 //Example using semi-quaver notes//
 ///////////////////////////////////
 //Bar 1, beat 1
-NO_HIT,HARD,HARD,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+
 //Bar 1, beat 2
-HARD,NO_HIT,HARD,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+
 //Bar 1, beat 3
-NO_HIT,HARD,HARD,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,MED,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+
 //Bar 1, beat 4
-HARD,NO_HIT,HARD,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
 NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
 NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT
+NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
+NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT
 };
 //pwm stuff
 int eraser = 7;
 
-void setup() {
-  Serial.begin(9600);
-  seq_count = 0;
-  pinMode(KICK,OUTPUT);
-  pinMode(SNARE,OUTPUT);
-  pinMode(HAT,OUTPUT);
-  pinMode(CRASH,OUTPUT);
-  pinMode(TOM1,OUTPUT);
-  pinMode(RIDE,OUTPUT);
-  pinMode(FTOM,OUTPUT);
-  
-  noInterrupts();
-  TCCR1A = 0; //Timer 1 (used by servo lib)
-  TCCR1B = 0;
-  interrupts();            
-
-  attachInterrupt(digitalPinToInterrupt(MUTE_IN),mute,HIGH); //Mute/unmute drums
-  attachInterrupt(digitalPinToInterrupt(MUTE_IN),unmute,LOW);
-  attachInterrupt(digitalPinToInterrupt(PULSE_IN),write_drums_high,RISING); //Whenever pin 19 goes from low to high write drums
- 
-  //attachInterrupt(digitalPinToInterrupt(PHASE_RST_IN),phase_rst,RISING);
-  
-  kick_active = false;
-  snare_active = false;
-  hat_active = false;
-  crash_active = false;
-  tom1_active = false;
-  ride_active = false;
-  ftom_active = false;
-  
-  //default to drums on
-  mute_flag = false;
-  
-  s_multiple_of_5 = 0;
-  k_multiple_of_5 = 0;
-  h_multiple_of_5 = 0;
-  c_multiple_of_5 = 0;
-  t1_multiple_of_5 = 0;
-  r_multiple_of_5 = 0;
-  ft_multiple_of_5 = 0;
-  
-  //setting pwm frequency to 31KHz on pins 2,3,5,6,7,8,9,10
-  set_pwm_2_3_5_6_7_8_9_10(); 
-
-}
-
-void loop() {
-
-}
+int loop_count = 0;
 
 void mute(){
   mute_flag = true;
@@ -194,58 +180,6 @@ void write_drums_high()
   { 
     bool is_hit = false;
     
-#ifdef PROGMEM_SET
-   
-    if(snare_active==false&&pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET) != NO_HIT)
-    {     
-      analogWrite(SNARE,pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET));   //snare
-      snare_active = true;
-      is_hit = true;
-    }
-    
-    
-    if(kick_active==false&&pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + KICK_OFFSET) != NO_HIT)
-    {
-      analogWrite(KICK,pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + KICK_OFFSET)); //kick
-      kick_active = true;
-      is_hit = true;
-    }
-    
-    if(hat_active==false&&pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + HAT_OFFSET) != NO_HIT)
-    {
-      analogWrite(HAT,pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + HAT_OFFSET));
-      hat_active = true;
-      is_hit = true;
-    }
-    
-    if(crash_active==false&&pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + CRASH_OFFSET) != NO_HIT)
-    {
-      analogWrite(CRASH,pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + CRASH_OFFSET));
-      crash_active = true;
-      is_hit = true;
-    }
-    
-    if(tom1_active==false&&pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + TOM1_OFFSET) != NO_HIT)
-    {
-      analogWrite(TOM1,pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + TOM1_OFFSET));
-      tom1_active = true;
-      is_hit = true;
-    }
-
-    if(ride_active==false&&pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + RIDE_OFFSET) != NO_HIT)
-    {
-      analogWrite(RIDE,pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + RIDE_OFFSET));
-      ride_active = true;
-      is_hit = true;
-    }
-    
-    if(ftom_active==false&&pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + FTOM_OFFSET) != NO_HIT)
-    {
-      analogWrite(FTOM,pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + FTOM_OFFSET));
-      ftom_active = true;
-      is_hit = true;
-    }
-#else
     if(snare_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET] != NO_HIT)
     {
       analogWrite(SNARE,sequence[seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET]);   //snare
@@ -294,7 +228,6 @@ void write_drums_high()
       ftom_active = true;
       is_hit = true;
     }
-#endif
     if (is_hit)
       begin_5_timer();
          
@@ -396,4 +329,146 @@ void set_pwm_2_3_5_6_7_8_9_10()
   TCCR2B |=prescaler; //Change frequency to 31KHz
 }
 
+int get_drum_index(int i) {
+  int result = 0;
+
+  int block_num = i/16;
+  int button_num = i%16;
+
+  // flip the blocks.
+  if (block_num < 4) {
+    block_num = block_num * 2;
+  } else {
+    block_num = block_num * 2 - 7;
+  }
+
+  int row = button_num / 4 + 4*(block_num % 2);
+  int col = button_num % 4 + 4*(block_num / 2);
+
+  if (row != 0) {
+    row--;
+  }
+  
+  result = col*7+row;
+  
+  // put it back together
+  Serial.print("Row number: "); Serial.println(row);
+  Serial.print("Col number: "); Serial.println(col);
+  Serial.print("Block number: "); Serial.println(block_num);
+  Serial.print("Button number: "); Serial.println(button_num);
+  Serial.print("Drum number: "); Serial.println(result);
+
+  
+  return result;
+}
+
+void setup() {
+  Serial.begin(9600);
+  Serial.println("Trellis Demo");
+  
+  // INT pin requires a pullup
+  pinMode(INTPIN, INPUT);
+  digitalWrite(INTPIN, HIGH);
+  
+  // begin() with the addresses of each panel in order
+  // I find it easiest if the addresses are in order
+//  trellis.begin(0x70);  // only one
+   trellis.begin(0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77);  // or four!
+
+  // light up all the LEDs in order
+  for (uint8_t i=0; i<numKeys; i++) {
+    trellis.setLED(i);
+    trellis.writeDisplay();    
+    delay(2);
+  }
+  // then turn them off
+  for (uint8_t i=0; i<numKeys; i++) {
+    trellis.clrLED(i);
+    trellis.writeDisplay();    
+    delay(2);
+  }
+
+  // now do the drums
+  seq_count = 0;
+  pinMode(KICK,OUTPUT);
+  pinMode(SNARE,OUTPUT);
+  pinMode(HAT,OUTPUT);
+  pinMode(CRASH,OUTPUT);
+  pinMode(TOM1,OUTPUT);
+  pinMode(RIDE,OUTPUT);
+  pinMode(FTOM,OUTPUT);
+  
+  TCCR1A = 0; //Timer 1 (used by servo lib)
+  TCCR1B = 0;
+
+//  attachInterrupt(digitalPinToInterrupt(MUTE_IN),mute,HIGH); //Mute/unmute drums
+//  attachInterrupt(digitalPinToInterrupt(MUTE_IN),unmute,LOW);
+//  attachInterrupt(digitalPinToInterrupt(PULSE_IN),write_drums_high,RISING); //Whenever pin 19 goes from low to high write drums
+ unmute();
+  
+  kick_active = false;
+  snare_active = false;
+  hat_active = false;
+  crash_active = false;
+  tom1_active = false;
+  ride_active = false;
+  ftom_active = false;
+  
+  //default to drums on
+  mute_flag = false;
+  
+  s_multiple_of_5 = 0;
+  k_multiple_of_5 = 0;
+  h_multiple_of_5 = 0;
+  c_multiple_of_5 = 0;
+  t1_multiple_of_5 = 0;
+  r_multiple_of_5 = 0;
+  ft_multiple_of_5 = 0;
+  
+  //setting pwm frequency to 31KHz on pins 2,3,5,6,7,8,9,10
+  set_pwm_2_3_5_6_7_8_9_10(); 
+
+  Serial.println("Setup finished");
+
+}
+
+int drum_index = 0;
+void loop() {
+
+  delay(30); // 30ms delay is required, dont remove me!
+
+//  delay(250);
+  if (loop_count >= 4) {
+    write_drums_high();
+    loop_count = 0;
+  }
+  
+  if (MODE == LATCHING) {
+    
+    // If a button was just pressed or released...
+    if (trellis.readSwitches()) {  
+      // go through every button
+      for (uint8_t i=0; i<numKeys; i++) {
+        // if it was pressed...
+        if (trellis.justPressed(i)) {
+          Serial.print("v"); Serial.println(i);
+          // Alternate the LED
+          // need to find the block number
+          drum_index = get_drum_index(i);
+          if (trellis.isLED(i)) {
+            sequence[drum_index] = NO_HIT;
+            trellis.clrLED(i);
+          } else {
+            sequence[drum_index] = HARD;
+            trellis.setLED(i);
+          }
+        } 
+      }
+      // tell the trellis to set the LEDs we requested
+      
+    }
+    trellis.writeDisplay();
+  }
+  loop_count++;
+}
 
