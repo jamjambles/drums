@@ -75,13 +75,13 @@ const byte MUTE_IN = 19; // Will mute/unmute the drums
 
 
 //output drum pins
-#define SNARE 2
-#define KICK  3
-#define HAT   5
-#define CRASH 6
-#define TOM1  7
-#define RIDE  8
-#define FTOM  9
+#define SNARE 8
+#define KICK  7
+#define HAT   3
+#define CRASH 2
+#define TOM1  9
+#define RIDE  5
+#define FTOM  6
 
 //timer
 #define CLOCK_SPEED   16*10^6 //16 MHz
@@ -91,13 +91,21 @@ const byte MUTE_IN = 19; // Will mute/unmute the drums
 #define TIMER_COUNTS  ((TIMER_TIME*10^-3 / TIMER_RES) -1)
 
 //drum times: how long each drum strike is
-#define KICK_TIME   90 //ms
-#define SNARE_TIME  40  //ms  
-#define HAT_TIME    40  //ms
-#define CRASH_TIME  80  //ms
-#define TOM1_TIME   40
-#define RIDE_TIME   40
-#define FTOM_TIME   40
+#define KICK_TIME   150 //ms
+#define SNARE_TIME  80  //ms  
+#define HAT_TIME    80  //ms
+#define CRASH_TIME  150  //ms
+#define TOM1_TIME   80
+#define RIDE_TIME   80
+#define FTOM_TIME   80
+
+//#define KICK_TIME   0 //ms
+//#define SNARE_TIME  10  //ms  
+//#define HAT_TIME    0  //ms
+//#define CRASH_TIME  0  //ms
+//#define TOM1_TIME   0
+//#define RIDE_TIME   0
+//#define FTOM_TIME   0
 
 //interupt stuff
 volatile bool kick_active;
@@ -228,8 +236,9 @@ void write_drums_high()
       ftom_active = true;
       is_hit = true;
     }
-    if (is_hit)
+    if (is_hit) {
       begin_5_timer();
+    }
          
     seq_count++;
     seq_count = seq_count % NUMBER_OF_STEPS;
