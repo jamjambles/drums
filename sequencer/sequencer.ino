@@ -70,8 +70,8 @@ Adafruit_TrellisSet trellis =  Adafruit_TrellisSet(&matrix0, &matrix1, &matrix2,
 #define NO_HIT  0
 
 //interupt pins
-//const byte PULSE_IN = 20; // The beats from the pi
-const byte MUTE_IN = 19; // Will mute/unmute the drums
+const byte PULSE_IN = 18; // The beats from the pi
+//const byte MUTE_IN = 19; // Will mute/unmute the drums
 
 
 //output drum pins
@@ -88,7 +88,9 @@ const byte MUTE_IN = 19; // Will mute/unmute the drums
 #define PRESCALER     1024
 #define TIMER_RES     (1 / ( CLOCK_SPEED / PRESCALER))
 #define TIMER_TIME    5 //ms
-#define TIMER_COUNTS  ((TIMER_TIME*10^-3 / TIMER_RES) -1)
+
+//#define TIMER_COUNTS  ((TIMER_TIME*10^-3 / TIMER_RES) -1)
+#define TIMER_COUNTS 77
 
 //drum times: how long each drum strike is
 #define KICK_TIME   150 //ms
@@ -124,47 +126,20 @@ volatile int t1_multiple_of_5;
 volatile int r_multiple_of_5;
 volatile int ft_multiple_of_5;
 
+unsigned int sequence[16*7];
+
 //index to sequence array
 volatile int seq_count;
-//mute drums
+
 volatile bool mute_flag;
 
-unsigned int sequence[(NUMBER_OF_STEPS)*NUMBER_OF_DRUMS]  = 
-{
-//Order of drums: snare, kick, hat, crash, tom1, ride, floor tom//
-//Accents: HARD, MED, SOFT, NO_HIT
+volatile bool usr_ctrl = true;
 
-///////////////////////////////////
-//Example using semi-quaver notes//
-///////////////////////////////////
-//Bar 1, beat 1
-NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-
-//Bar 1, beat 2
-NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-
-//Bar 1, beat 3
-NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-
-//Bar 1, beat 4
-NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT
-};
 //pwm stuff
 int eraser = 7;
 
 int loop_count = 0;
+
 
 void mute(){
   mute_flag = true;
@@ -236,9 +211,9 @@ void write_drums_high()
       ftom_active = true;
       is_hit = true;
     }
-    if (is_hit) {
-      begin_5_timer();
-    }
+//    if (is_hit) {
+//      begin_5_timer();
+//    }
          
     seq_count++;
     seq_count = seq_count % NUMBER_OF_STEPS;
@@ -248,8 +223,10 @@ void write_drums_high()
 
 ISR(TIMER1_COMPA_vect)
 {
-  if(snare_active == true)
+
+  if(snare_active == true){
     s_multiple_of_5++; //another 5ms passed
+  }
 
   if(kick_active == true)
     k_multiple_of_5++; //another 5ms passed
@@ -373,6 +350,21 @@ int get_drum_index(int i) {
   return result;
 }
 
+void send_msg(String msg){
+  Serial.println(msg);
+  Serial.flush();
+}
+
+String receive_msg(){
+  String msg;
+  while(1){
+    if(Serial.available()){
+        msg = Serial.readString();
+        return msg;
+    } 
+  }
+}
+
 void setup() {
   Serial.begin(9600);
   Serial.println("Trellis Demo");
@@ -380,6 +372,7 @@ void setup() {
   // INT pin requires a pullup
   pinMode(INTPIN, INPUT);
   digitalWrite(INTPIN, HIGH);
+
   
   // begin() with the addresses of each panel in order
   // I find it easiest if the addresses are in order
@@ -414,7 +407,7 @@ void setup() {
 
 //  attachInterrupt(digitalPinToInterrupt(MUTE_IN),mute,HIGH); //Mute/unmute drums
 //  attachInterrupt(digitalPinToInterrupt(MUTE_IN),unmute,LOW);
-//  attachInterrupt(digitalPinToInterrupt(PULSE_IN),write_drums_high,RISING); //Whenever pin 19 goes from low to high write drums
+  attachInterrupt(digitalPinToInterrupt(PULSE_IN),write_drums_high,RISING); //Whenever pin 19 goes from low to high write drums
  unmute();
   
   kick_active = false;
@@ -438,23 +431,29 @@ void setup() {
   
   //setting pwm frequency to 31KHz on pins 2,3,5,6,7,8,9,10
   set_pwm_2_3_5_6_7_8_9_10(); 
-
+  
+  //Serial stuff
+  
+  //initialising sequence
+  
+  unsigned int sequence = {0};
+  
   Serial.println("Setup finished");
+  Serial.println("Setting up timer.");
+  begin_5_timer();
+  Serial.println("Timer has been set up");
+  delay(4500);
+  Serial.println("Ready to go");
 
 }
 
-int drum_index = 0;
+
 void loop() {
-
-  delay(30); // 30ms delay is required, dont remove me!
-
-//  delay(250);
-  if (loop_count >= 4) {
-    write_drums_high();
-    loop_count = 0;
-  }
   
-  if (MODE == LATCHING) {
+  delay(30); // 30ms delay is required, dont remove me!
+  int drum_index = 0;
+  
+  if (usr_ctrl) {
     
     // If a button was just pressed or released...
     if (trellis.readSwitches()) {  
@@ -480,6 +479,7 @@ void loop() {
     }
     trellis.writeDisplay();
   }
+  
   loop_count++;
 }
 
