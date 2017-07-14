@@ -217,9 +217,15 @@ void write_drums_high()
 //    if (is_hit) {
 //      begin_5_timer();
 //    }
-         
+    trellis.setLED(map_seq_count_to_untz_index(seq_count));
+    trellis.clrLED(map_seq_count_to_untz_index(seq_count-1));
+    
     seq_count++;
     seq_count = seq_count % NUMBER_OF_STEPS;
+
+    if (seq_count-1 == 0) {
+      trellis.clrLED(map_seq_count_to_untz_index(15));
+    }
   }
 
 }
@@ -351,6 +357,15 @@ int get_drum_index(int i) {
   return result;
 }
 
+int map_seq_count_to_untz_index(int seq_count) {
+  int result;
+  int block_num = seq_count / 4;
+  int block_index = seq_count % 4;
+
+  result = block_num*16 + block_index;
+  return result;
+}
+
 void setup() {
   Serial.begin(9600);
   Serial.println("Trellis Demo");
@@ -464,12 +479,12 @@ void loop() {
         // tell the trellis to set the LEDs we requested
         
       }
-      trellis.writeDisplay();
       untz_poll=0;
     }else{
       untz_poll++;
     }
   }
+  trellis.writeDisplay();
 
   while(Serial.available() > 0){
     ser_buf[ser_buf_index] = (char)Serial.read();
