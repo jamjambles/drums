@@ -369,7 +369,7 @@ int map_seq_count_to_untz_index(int seq_count) {
 void setup() {
   Serial.begin(9600);
   Serial.println("Trellis Demo");
-  
+  Serial3.begin(9600);
   // INT pin requires a pullup
   pinMode(INTPIN, INPUT);
   digitalWrite(INTPIN, HIGH);
@@ -481,9 +481,10 @@ void loop() {
   }
   trellis.writeDisplay();
 
-//  while(Serial.available() > 0){
-//    ser_buf[ser_buf_index] = (char)Serial.read();
-//    Serial.println(ser_buf[ser_buf_index]);
+  while(Serial3.available() > 0){
+    ser_buf[ser_buf_index] = (char)Serial3.read();
+    Serial.println(ser_buf[ser_buf_index]);
+    write_drums_high();  
 //    if ((char)ser_buf[ser_buf_index] == '1'){
 //      write_drums_high();    
 //    }
@@ -492,7 +493,7 @@ void loop() {
 //    }else{
 //      ser_buf_index++;
 //    }
-//  }
+  }
   
 }
 
