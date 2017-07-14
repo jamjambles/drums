@@ -484,10 +484,10 @@ void loop() {
   while(Serial3.available() > 0){
     ser_buf[ser_buf_index] = (char)Serial3.read();
     Serial.println(ser_buf[ser_buf_index]);
-    write_drums_high();  
-//    if ((char)ser_buf[ser_buf_index] == '1'){
-//      write_drums_high();    
-//    }
+//    write_drums_high();  
+    if ((char)ser_buf[ser_buf_index] == '1'){
+      write_drums_high();    
+    }
 //    if(ser_buf_index==2000){
 //      ser_buf_index = 0;
 //    }else{
