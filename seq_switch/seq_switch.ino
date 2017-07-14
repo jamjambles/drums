@@ -1,43 +1,12 @@
 //Drum sequencer by James Wagner. For use with arduino mega2560
 
-
-//sequence specs
-#define NUMBER_OF_STEPS_PER_BEAT 4
-#define NUMBER_OF_BARS 1
-#define NUMBER_OF_BEATS_PER_BAR 4
-#define NUMBER_OF_BEATS (NUMBER_OF_BARS*NUMBER_OF_BEATS_PER_BAR)
-#define NUMBER_OF_DRUMS 7
-#define REST 0
-#define NUMBER_OF_STEPS (NUMBER_OF_STEPS_PER_BEAT*NUMBER_OF_BEATS+REST)
-#define SEQUENCE_LENGTH (NUMBER_OF_STEPS*NUMBER_OF_DRUMS)
-
-//if sequence length is too long, store it in flash mem
-//3000 is somewhat arbitrary
-#if SEQUENCE_LENGTH > 3000
-  #include <avr/pgmspace.h> 
-  #define PROGMEM_SET
-#endif
-
-//sequence order
-#define SNARE_OFFSET  0
-#define KICK_OFFSET   1
-#define HAT_OFFSET    2
-#define CRASH_OFFSET  3
-#define TOM1_OFFSET   4
-#define RIDE_OFFSET   5
-#define FTOM_OFFSET   6
-
-//hit strengths. Provides ability to accent notes
-#define HARD    255
-#define MED     230
-#define SOFT    200
-#define NO_HIT  0
+#include "constants.h"
 
 //interupt pins
-const byte PULSE_IN = 19; // The beats from the pi
+const byte BASE_BPM_IN = 19; // The beats from the pi
+const byte SUB_BPM_IN =  18;  
 const byte MUTE_IN = 20; // Will mute/unmute the drums
 const byte PHASE_RST_IN = 21; // Correct any phase issues during performance. Not implemented
-
 
 //output drum pins
 #define SNARE 2
@@ -48,21 +17,6 @@ const byte PHASE_RST_IN = 21; // Correct any phase issues during performance. No
 #define RIDE  8
 #define FTOM  9
 
-//timer
-#define CLOCK_SPEED   16*10^6 //16 MHz
-#define PRESCALER     1024
-#define TIMER_RES     (1 / ( CLOCK_SPEED / PRESCALER))
-#define TIMER_TIME    5 //ms
-#define TIMER_COUNTS  ((TIMER_TIME*10^-3 / TIMER_RES) -1)
-
-//drum times: how long each drum strike is
-#define KICK_TIME   90 //ms
-#define SNARE_TIME  40  //ms  
-#define HAT_TIME    40  //ms
-#define CRASH_TIME  80  //ms
-#define TOM1_TIME   40
-#define RIDE_TIME   40
-#define FTOM_TIME   40
 
 //interupt stuff
 volatile bool kick_active;
@@ -84,41 +38,15 @@ volatile int ft_multiple_of_5;
 //index to sequence array
 volatile int seq_count;
 //mute drums
-volatile bool mute_flag;
+volatile bool mute_flag_b;
+volatile bool mute_flag_s;
 
-#ifdef PROGMEM_SET
-const PROGMEM unsigned int sequence[NUMBER_OF_STEPS*NUMBER_OF_DRUMS]  = 
-#else
-const unsigned int sequence[(NUMBER_OF_STEPS)*NUMBER_OF_DRUMS]  = 
-#endif
-{
-//Order of drums: snare, kick, hat, crash, tom1, ride, floor tom//
-//Accents: HARD, MED, SOFT, NO_HIT
 
-///////////////////////////////////
-//Example using semi-quaver notes//
-///////////////////////////////////
-//Bar 1, beat 1
-NO_HIT,HARD,HARD,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-//Bar 1, beat 2
-HARD,NO_HIT,HARD,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-//Bar 1, beat 3
-NO_HIT,HARD,HARD,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,MED,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-//Bar 1, beat 4
-HARD,NO_HIT,HARD,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,
-MED,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT,NO_HIT
-};
+
+
+
+
+
 //pwm stuff
 int eraser = 7;
 
@@ -138,10 +66,12 @@ void setup() {
   TCCR1B = 0;
   interrupts();            
 
-  attachInterrupt(digitalPinToInterrupt(MUTE_IN),mute,HIGH); //Mute/unmute drums
-  attachInterrupt(digitalPinToInterrupt(MUTE_IN),unmute,LOW);
-  attachInterrupt(digitalPinToInterrupt(PULSE_IN),write_drums_high,RISING); //Whenever pin 19 goes from low to high write drums
- 
+  //attachInterrupt(digitalPinToInterrupt(MUTE_IN),mute,HIGH); //Mute/unmute drums
+  //attachInterrupt(digitalPinToInterrupt(MUTE_IN),unmute,LOW);
+  
+  attachInterrupt(digitalPinToInterrupt(BASE_BPM_IN),write_drums_high_b,RISING); //Whenever pin 19 goes from low to high write drums
+  attachInterrupt(digitalPinToInterrupt(SUB_BPM_IN),write_drums_high_s,RISING); //Whenever pin 18 goes from low to high write drums
+  
   //attachInterrupt(digitalPinToInterrupt(PHASE_RST_IN),phase_rst,RISING);
   
   kick_active = false;
@@ -152,8 +82,9 @@ void setup() {
   ride_active = false;
   ftom_active = false;
   
-  //default to drums on
-  mute_flag = false;
+  //default to drums off
+  mute_flag_b = true;
+  mute_flag_s = true;
   
   s_multiple_of_5 = 0;
   k_multiple_of_5 = 0;
@@ -169,17 +100,28 @@ void setup() {
 }
 
 void loop() {
-
+  if(digitalRead(MUTE_IN)==HIGH)
+  {
+    if(mute_flag_b==true){
+      seq_count = 0; 
+      mute_flag_b = false;
+    }
+  }else{
+    mute_flag_b = true;
+    mute_flag_s = true;
+  }
 }
 
 void mute(){
-  mute_flag = true;
+  mute_flag_b = true;
+  mute_flag_s = true;
 }
 
 void unmute(){
-  seq_count = 0;
-  
-  mute_flag = false;
+  seq_count = 0; 
+  mute_flag_b = false;
+
+  //dont set mute_flag_s here
 }
 
 void phase_rst(){
@@ -187,11 +129,134 @@ void phase_rst(){
 }
 
 
-void write_drums_high()
+void write_drums_high_b()
 {
-
-  if(mute_flag == false)
+  
+  if(mute_flag_b == false)
   { 
+    Serial.print("in base\n");
+    mute_flag_s = false;  
+    bool is_hit = false;
+    
+#ifdef PROGMEM_SET
+   
+    if(snare_active==false&&pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET) != NO_HIT)
+    {     
+      analogWrite(SNARE,pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET));   //snare
+      snare_active = true;
+      is_hit = true;
+    }
+    
+    
+    if(kick_active==false&&pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + KICK_OFFSET) != NO_HIT)
+    {
+      analogWrite(KICK,pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + KICK_OFFSET)); //kick
+      kick_active = true;
+      is_hit = true;
+    }
+    
+    if(hat_active==false&&pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + HAT_OFFSET) != NO_HIT)
+    {
+      analogWrite(HAT,pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + HAT_OFFSET));
+      hat_active = true;
+      is_hit = true;
+    }
+    
+    if(crash_active==false&&pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + CRASH_OFFSET) != NO_HIT)
+    {
+      analogWrite(CRASH,pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + CRASH_OFFSET));
+      crash_active = true;
+      is_hit = true;
+    }
+    
+    if(tom1_active==false&&pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + TOM1_OFFSET) != NO_HIT)
+    {
+      analogWrite(TOM1,pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + TOM1_OFFSET));
+      tom1_active = true;
+      is_hit = true;
+    }
+
+    if(ride_active==false&&pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + RIDE_OFFSET) != NO_HIT)
+    {
+      analogWrite(RIDE,pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + RIDE_OFFSET));
+      ride_active = true;
+      is_hit = true;
+    }
+    
+    if(ftom_active==false&&pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + FTOM_OFFSET) != NO_HIT)
+    {
+      analogWrite(FTOM,pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + FTOM_OFFSET));
+      ftom_active = true;
+      is_hit = true;
+    }
+#else
+    if(snare_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET] != NO_HIT)
+    {
+      analogWrite(SNARE,sequence[seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET]);   //snare
+      snare_active = true;
+      is_hit = true;
+    }
+    
+    if(kick_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + KICK_OFFSET] != NO_HIT)
+    {
+      analogWrite(KICK,sequence[seq_count*NUMBER_OF_DRUMS + KICK_OFFSET]);  //kick
+      kick_active = true;
+      is_hit = true;
+    }
+    
+    if(hat_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + HAT_OFFSET] != NO_HIT) 
+    {
+      analogWrite(HAT,sequence[seq_count*NUMBER_OF_DRUMS + HAT_OFFSET]);  //hat
+      hat_active = true;
+      is_hit = true;
+    }
+    
+    if(crash_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + CRASH_OFFSET] != NO_HIT) 
+    {
+      analogWrite(CRASH,sequence[seq_count*NUMBER_OF_DRUMS + CRASH_OFFSET]);  //crash
+      crash_active = true;
+      is_hit = true;
+    }
+    
+    if(tom1_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + TOM1_OFFSET] != NO_HIT) 
+    {
+      analogWrite(TOM1,sequence[seq_count*NUMBER_OF_DRUMS + TOM1_OFFSET]);  //tom1
+      tom1_active = true;
+      is_hit = true;
+    }
+    
+    if(ride_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + RIDE_OFFSET] != NO_HIT) 
+    {
+      analogWrite(RIDE,sequence[seq_count*NUMBER_OF_DRUMS + RIDE_OFFSET]);  //ride
+      ride_active = true;
+      is_hit = true;
+    }
+    
+    if(ftom_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + FTOM_OFFSET] != NO_HIT) 
+    {
+      analogWrite(FTOM,sequence[seq_count*NUMBER_OF_DRUMS + FTOM_OFFSET]);  //ftom
+      ftom_active = true;
+      is_hit = true;
+    }
+#endif
+    if (is_hit)
+      begin_5_timer();
+         
+    seq_count++;
+    seq_count = seq_count % NUMBER_OF_STEPS;
+  }
+
+}
+
+
+
+
+void write_drums_high_s()
+{
+  //Serial.print("in sub \n");
+  if(mute_flag_s == false)
+  { 
+    Serial.print("in sub and not mute \n");
     bool is_hit = false;
     
 #ifdef PROGMEM_SET
