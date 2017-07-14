@@ -130,11 +130,14 @@ unsigned int sequence[16*7];
 
 //index to sequence array
 volatile int seq_count;
+volatile int untz_poll;
 
 volatile bool mute_flag;
 
-volatile bool usr_ctrl = true;
-
+volatile bool usr_ctrl = false;
+//Serial buffer
+volatile char ser_buf[2000];
+volatile int ser_buf_index;
 //pwm stuff
 int eraser = 7;
 
@@ -158,7 +161,7 @@ void phase_rst(){
 
 void write_drums_high()
 {
-  Serial.println(seq_count);
+
   if(mute_flag == false)
   { 
     bool is_hit = false;
@@ -214,17 +217,9 @@ void write_drums_high()
 //    if (is_hit) {
 //      begin_5_timer();
 //    }
-
-    
-    trellis.setLED(map_seq_count_to_untz_index(seq_count));
-    trellis.clrLED(map_seq_count_to_untz_index(seq_count-1));
-    
+         
     seq_count++;
     seq_count = seq_count % NUMBER_OF_STEPS;
-
-    if (seq_count-1 == 0) {
-      trellis.clrLED(map_seq_count_to_untz_index(15));
-    }
   }
 
 }
@@ -292,9 +287,7 @@ ISR(TIMER1_COMPA_vect)
     ftom_active=false;
     ft_multiple_of_5 = 0;
   }
-  
   begin_5_timer();
-  
 }
 
 void begin_5_timer()
@@ -348,38 +341,14 @@ int get_drum_index(int i) {
   result = col*7+row;
   
   // put it back together
-  Serial.print("Row number: "); Serial.println(row);
-  Serial.print("Col number: "); Serial.println(col);
-  Serial.print("Block number: "); Serial.println(block_num);
-  Serial.print("Button number: "); Serial.println(button_num);
-  Serial.print("Drum number: "); Serial.println(result);
+  //Serial.print("Row number: "); Serial.println(row);
+  //Serial.print("Col number: "); Serial.println(col);
+  //Serial.print("Block number: "); Serial.println(block_num);
+  //Serial.print("Button number: "); Serial.println(button_num);
+  //Serial.print("Drum number: "); Serial.println(result);
 
   
   return result;
-}
-
-int map_seq_count_to_untz_index(int seq_count) {
-  int result;
-  int block_num = seq_count / 4;
-  int block_index = seq_count % 4;
-
-  result = block_num*16 + block_index;
-  return result;
-}
-
-void send_msg(String msg){
-  Serial.println(msg);
-  Serial.flush();
-}
-
-String receive_msg(){
-  String msg;
-  while(1){
-    if(Serial.available()){
-        msg = Serial.readString();
-        return msg;
-    } 
-  }
 }
 
 void setup() {
@@ -397,17 +366,17 @@ void setup() {
    trellis.begin(0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77);  // or four!
 
   // light up all the LEDs in order
-//  for (uint8_t i=0; i<numKeys; i++) {
-//    trellis.setLED(i);
-//    trellis.writeDisplay();    
-//    delay(2);
-//  }
-//  // then turn them off
-//  for (uint8_t i=0; i<numKeys; i++) {
-//    trellis.clrLED(i);
-//    trellis.writeDisplay();    
-//    delay(2);
-//  }
+  for (uint8_t i=0; i<numKeys; i++) {
+    trellis.setLED(i);
+    trellis.writeDisplay();    
+    delay(2);
+  }
+  // then turn them off
+  for (uint8_t i=0; i<numKeys; i++) {
+    trellis.clrLED(i);
+    trellis.writeDisplay();    
+    delay(2);
+  }
 
   // now do the drums
   seq_count = 0;
@@ -450,10 +419,12 @@ void setup() {
   set_pwm_2_3_5_6_7_8_9_10(); 
   
   //Serial stuff
-  
+  untz_poll = 0;
+  ser_buf_index = 0;
   //initialising sequence
   
   unsigned int sequence = {0};
+  
   
   Serial.println("Setup finished");
   Serial.println("Setting up timer.");
@@ -461,43 +432,57 @@ void setup() {
   Serial.println("Timer has been set up");
   delay(4500);
   Serial.println("Ready to go");
-
+  usr_ctrl = true;
 }
 
 
 void loop() {
   
-  delay(30); // 30ms delay is required, dont remove me!
+  delay(1); // 30ms delay is required, dont remove me!
   int drum_index = 0;
-  
-  if (usr_ctrl) {
-    
-    // If a button was just pressed or released...
-    if (trellis.readSwitches()) {  
-      // go through every button
-      for (uint8_t i=0; i<numKeys; i++) {
-        // if it was pressed...
-        if (trellis.justPressed(i)) {
-          Serial.print("v"); Serial.println(i);
-          // Alternate the LED
-          // need to find the block number
-          drum_index = get_drum_index(i);
-          if (trellis.isLED(i)) {
-            sequence[drum_index] = NO_HIT;
-            trellis.clrLED(i);
-          } else {
-            sequence[drum_index] = HARD;
-            trellis.setLED(i);
-          }
-        } 
+  if(usr_ctrl){
+    if(untz_poll==30){
+      // If a button was just pressed or released...
+      if (trellis.readSwitches()) {  
+        // go through every button
+        for (uint8_t i=0; i<numKeys; i++) {
+          // if it was pressed...
+          if (trellis.justPressed(i)) {
+            //Serial.print("v"); Serial.println(i);
+            // Alternate the LED
+            // need to find the block number
+            drum_index = get_drum_index(i);
+            if (trellis.isLED(i)) {
+              sequence[drum_index] = NO_HIT;
+              trellis.clrLED(i);
+            } else {
+              sequence[drum_index] = HARD;
+              trellis.setLED(i);
+            }
+          } 
+        }
+        // tell the trellis to set the LEDs we requested
+        
       }
-      // tell the trellis to set the LEDs we requested
-      
+      trellis.writeDisplay();
+      untz_poll=0;
+    }else{
+      untz_poll++;
     }
   }
 
-  // write the display every time.
-  trellis.writeDisplay();
-  loop_count++;
+  while(Serial.available() > 0){
+    ser_buf[ser_buf_index] = (char)Serial.read();
+    Serial.println(ser_buf[ser_buf_index]);
+    if ((char)ser_buf[ser_buf_index] == '1'){
+      write_drums_high();    
+    }
+    if(ser_buf_index==2000){
+      ser_buf_index = 0;
+    }else{
+      ser_buf_index++;
+    }
+  }
+  
 }
 
