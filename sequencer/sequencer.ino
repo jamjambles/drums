@@ -453,51 +453,46 @@ void setup() {
 
 void loop() {
   
-  delay(1); // 30ms delay is required, dont remove me!
+  delay(30); // 30ms delay is required, dont remove me!
   int drum_index = 0;
   if(usr_ctrl){
-    if(untz_poll==30){
-      // If a button was just pressed or released...
-      if (trellis.readSwitches()) {  
-        // go through every button
-        for (uint8_t i=0; i<numKeys; i++) {
-          // if it was pressed...
-          if (trellis.justPressed(i)) {
-            //Serial.print("v"); Serial.println(i);
-            // Alternate the LED
-            // need to find the block number
-            drum_index = get_drum_index(i);
-            if (trellis.isLED(i)) {
-              sequence[drum_index] = NO_HIT;
-              trellis.clrLED(i);
-            } else {
-              sequence[drum_index] = HARD;
-              trellis.setLED(i);
-            }
-          } 
-        }
-        // tell the trellis to set the LEDs we requested
-        
+    // If a button was just pressed or released...
+    if (trellis.readSwitches()) {  
+      // go through every button
+      for (uint8_t i=0; i<numKeys; i++) {
+        // if it was pressed...
+        if (trellis.justPressed(i)) {
+          //Serial.print("v"); Serial.println(i);
+          // Alternate the LED
+          // need to find the block number
+          drum_index = get_drum_index(i);
+          if (trellis.isLED(i)) {
+            sequence[drum_index] = NO_HIT;
+            trellis.clrLED(i);
+          } else {
+            sequence[drum_index] = HARD;
+            trellis.setLED(i);
+          }
+        } 
       }
-      untz_poll=0;
-    }else{
-      untz_poll++;
+      // tell the trellis to set the LEDs we requested
+      
     }
   }
   trellis.writeDisplay();
 
-  while(Serial.available() > 0){
-    ser_buf[ser_buf_index] = (char)Serial.read();
-    Serial.println(ser_buf[ser_buf_index]);
-    if ((char)ser_buf[ser_buf_index] == '1'){
-      write_drums_high();    
-    }
-    if(ser_buf_index==2000){
-      ser_buf_index = 0;
-    }else{
-      ser_buf_index++;
-    }
-  }
+//  while(Serial.available() > 0){
+//    ser_buf[ser_buf_index] = (char)Serial.read();
+//    Serial.println(ser_buf[ser_buf_index]);
+//    if ((char)ser_buf[ser_buf_index] == '1'){
+//      write_drums_high();    
+//    }
+//    if(ser_buf_index==2000){
+//      ser_buf_index = 0;
+//    }else{
+//      ser_buf_index++;
+//    }
+//  }
   
 }
 
