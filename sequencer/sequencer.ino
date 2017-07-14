@@ -158,7 +158,7 @@ void phase_rst(){
 
 void write_drums_high()
 {
-
+  Serial.println(seq_count);
   if(mute_flag == false)
   { 
     bool is_hit = false;
@@ -214,9 +214,17 @@ void write_drums_high()
 //    if (is_hit) {
 //      begin_5_timer();
 //    }
-         
+
+    
+    trellis.setLED(map_seq_count_to_untz_index(seq_count));
+    trellis.clrLED(map_seq_count_to_untz_index(seq_count-1));
+    
     seq_count++;
     seq_count = seq_count % NUMBER_OF_STEPS;
+
+    if (seq_count-1 == 0) {
+      trellis.clrLED(map_seq_count_to_untz_index(15));
+    }
   }
 
 }
@@ -350,6 +358,15 @@ int get_drum_index(int i) {
   return result;
 }
 
+int map_seq_count_to_untz_index(int seq_count) {
+  int result;
+  int block_num = seq_count / 4;
+  int block_index = seq_count % 4;
+
+  result = block_num*16 + block_index;
+  return result;
+}
+
 void send_msg(String msg){
   Serial.println(msg);
   Serial.flush();
@@ -380,17 +397,17 @@ void setup() {
    trellis.begin(0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77);  // or four!
 
   // light up all the LEDs in order
-  for (uint8_t i=0; i<numKeys; i++) {
-    trellis.setLED(i);
-    trellis.writeDisplay();    
-    delay(2);
-  }
-  // then turn them off
-  for (uint8_t i=0; i<numKeys; i++) {
-    trellis.clrLED(i);
-    trellis.writeDisplay();    
-    delay(2);
-  }
+//  for (uint8_t i=0; i<numKeys; i++) {
+//    trellis.setLED(i);
+//    trellis.writeDisplay();    
+//    delay(2);
+//  }
+//  // then turn them off
+//  for (uint8_t i=0; i<numKeys; i++) {
+//    trellis.clrLED(i);
+//    trellis.writeDisplay();    
+//    delay(2);
+//  }
 
   // now do the drums
   seq_count = 0;
@@ -477,9 +494,10 @@ void loop() {
       // tell the trellis to set the LEDs we requested
       
     }
-    trellis.writeDisplay();
   }
-  
+
+  // write the display every time.
+  trellis.writeDisplay();
   loop_count++;
 }
 
