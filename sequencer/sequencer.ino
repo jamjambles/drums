@@ -24,6 +24,8 @@ Adafruit_Trellis matrix2 = Adafruit_Trellis();
 Adafruit_Trellis matrix3 = Adafruit_Trellis();
 Adafruit_Trellis matrix4 = Adafruit_Trellis();
 Adafruit_Trellis matrix5 = Adafruit_Trellis();
+Adafruit_Trellis matrix6 = Adafruit_Trellis();
+Adafruit_Trellis matrix7 = Adafruit_Trellis();
 Adafruit_TrellisSet trellis =  Adafruit_TrellisSet(&matrix0, &matrix1, &matrix2, &matrix3,&matrix4, &matrix5, &matrix6, &matrix7);
 
 // set to however many you're working with here, up to 8
@@ -214,11 +216,16 @@ void write_drums_high()
 //    if (is_hit) {
 //      begin_5_timer();
 //    }
+    
     trellis.setLED(map_seq_count_to_untz_index(seq_count));
     trellis.clrLED(map_seq_count_to_untz_index(seq_count-1));
-    
+
     seq_count++;
     seq_count = seq_count % NUMBER_OF_STEPS;
+    
+    if (seq_count-1 == 0) {
+      trellis.clrLED(map_seq_count_to_untz_index(15));
+    }
   }
 
 }
@@ -374,17 +381,17 @@ void setup() {
    trellis.begin(0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77);  // or four!
 
   // light up all the LEDs in order
-  for (uint8_t i=0; i<numKeys; i++) {
-    trellis.setLED(i);
-    trellis.writeDisplay();    
-    delay(2);
-  }
-  // then turn them off
-  for (uint8_t i=0; i<numKeys; i++) {
-    trellis.clrLED(i);
-    trellis.writeDisplay();    
-    delay(2);
-  }
+//  for (uint8_t i=0; i<numKeys; i++) {
+//    trellis.setLED(i);
+//    trellis.writeDisplay();    
+//    delay(2);
+//  }
+//  // then turn them off
+//  for (uint8_t i=0; i<numKeys; i++) {
+//    trellis.clrLED(i);
+//    trellis.writeDisplay();    
+//    delay(2);
+//  }
 
   // now do the drums
   seq_count = 0;
