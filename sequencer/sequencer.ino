@@ -464,72 +464,33 @@ void setup() {
 
 void loop() {
   
-//  delay(30); // 30ms delay is required, dont remove me!
-//  int drum_index = 0;
-//  if(usr_ctrl){
-//    // If a button was just pressed or released...
-//    if (trellis.readSwitches()) {  
-//      // go through every button
-//      for (uint8_t i=0; i<numKeys; i++) {
-//        // if it was pressed...
-//        if (trellis.justPressed(i)) {
-//          
-//          // Alternate the LED
-//          // need to find the block number
-//          drum_index = get_drum_index(i);
-//          if (drum_index <= -1) {
-//
-//            // if the ctrl button just pressed was already on.
-//            // toggle the bit at the end
-//            if (control_buttons[1-drum_index]) {
-//              control_buttons[1-drum_index] = false;
-//            } else {
-//              control_buttons[1-drum_index] = true;
-//            }
-//
-//            
-//            //I need to update the top row here
-//            // fix drum index to 
-//          } 
-//          
-//          if (trellis.isLED(i)) {
-//            sequence[drum_index] = NO_HIT;
-//            trellis.clrLED(i);
-//          } else {
-//            sequence[drum_index] = HARD;
-//            trellis.setLED(i);
-//          }
-//        } 
-//      }
-//      // tell the trellis to set the LEDs we requested
-//      
-//    }
-//  }
-//  trellis.writeDisplay();
-
-  while(Serial3.available() > 0){
+  delay(30); // 30ms delay is required, dont remove me!
+  int drum_index = 0;
+  if(usr_ctrl){
+    // If a button was just pressed or released...
+    if (trellis.readSwitches()) {  
+      // go through every button
+      for (uint8_t i=0; i<numKeys; i++) {
+        // if it was pressed...
+        while(Serial3.available() > 0){
     char temp = (char)Serial3.read();
     Serial3.flush();
 //    Serial.println(temp);
     switch (temp) {
       case '1':
         seq_count = 0;
-//        sequence[2] = 255;
         write_drums_high();
         break;
         case '2':
         seq_count = 4;
-//        sequence[2+7*4] = 255;
         write_drums_high();
         break;
         case '3':
         seq_count = 8;
-//        sequence[2+7*8] = 255;
         write_drums_high();
         break;
       case '4':
         seq_count = 12;
-//        sequence[2+7*12] = 255;
         write_drums_high();
         
         break;
@@ -542,6 +503,72 @@ void loop() {
 //      write_drums_high();
         break;
     }
+        if (trellis.justPressed(i)) {
+          
+          // Alternate the LED
+          // need to find the block number
+          drum_index = get_drum_index(i);
+          if (drum_index <= -1) {
+
+            // if the ctrl button just pressed was already on.
+            // toggle the bit at the end
+            if (control_buttons[1-drum_index]) {
+              control_buttons[1-drum_index] = false;
+            } else {
+              control_buttons[1-drum_index] = true;
+            }
+
+            
+            //I need to update the top row here
+            // fix drum index to 
+          } 
+          
+          if (trellis.isLED(i)) {
+            sequence[drum_index] = NO_HIT;
+            trellis.clrLED(i);
+          } else {
+            sequence[drum_index] = HARD;
+            trellis.setLED(i);
+          }
+        } 
+      }
+      // tell the trellis to set the LEDs we requested
+      
+    }
+  }
+  trellis.writeDisplay();
+
+//  while(Serial3.available() > 0){
+//    char temp = (char)Serial3.read();
+//    Serial3.flush();
+////    Serial.println(temp);
+//    switch (temp) {
+//      case '1':
+//        seq_count = 0;
+//        write_drums_high();
+//        break;
+//        case '2':
+//        seq_count = 4;
+//        write_drums_high();
+//        break;
+//        case '3':
+//        seq_count = 8;
+//        write_drums_high();
+//        break;
+//      case '4':
+//        seq_count = 12;
+//        write_drums_high();
+//        
+//        break;
+//      case 's':
+////        write_drums_high();
+////        Serial.println(temp);
+//        break;
+//      default:
+//        // shit is fucked.
+////      write_drums_high();
+//        break;
+//    }
 
   }
   
