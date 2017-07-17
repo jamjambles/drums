@@ -145,171 +145,21 @@ void phase_rst(){
 }
 
 
-void write_drums_high()
+void new_beat()
 {
-
-  if(mute_flag == false)
-  { 
-    bool is_hit = false;
-    
-    if(snare_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET] != NO_HIT)
-    {
-      analogWrite(SNARE,sequence[seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET]);   //snare
-      snare_active = true;
-      is_hit = true;
-    }
-    
-    if(kick_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + KICK_OFFSET] != NO_HIT)
-    {
-      analogWrite(KICK,sequence[seq_count*NUMBER_OF_DRUMS + KICK_OFFSET]);  //kick
-      kick_active = true;
-      is_hit = true;
-    }
-    
-    if(hat_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + HAT_OFFSET] != NO_HIT) 
-    {
-      analogWrite(HAT,sequence[seq_count*NUMBER_OF_DRUMS + HAT_OFFSET]);  //hat
-      hat_active = true;
-      is_hit = true;
-    }
-    
-    if(crash_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + CRASH_OFFSET] != NO_HIT) 
-    {
-      analogWrite(CRASH,sequence[seq_count*NUMBER_OF_DRUMS + CRASH_OFFSET]);  //crash
-      crash_active = true;
-      is_hit = true;
-    }
-    
-    if(tom1_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + TOM1_OFFSET] != NO_HIT) 
-    {
-      analogWrite(TOM1,sequence[seq_count*NUMBER_OF_DRUMS + TOM1_OFFSET]);  //tom1
-      tom1_active = true;
-      is_hit = true;
-    }
-    
-    if(ride_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + RIDE_OFFSET] != NO_HIT) 
-    {
-      analogWrite(RIDE,sequence[seq_count*NUMBER_OF_DRUMS + RIDE_OFFSET]);  //ride
-      ride_active = true;
-      is_hit = true;
-    }
-    
-    if(ftom_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + FTOM_OFFSET] != NO_HIT) 
-    {
-      analogWrite(FTOM,sequence[seq_count*NUMBER_OF_DRUMS + FTOM_OFFSET]);  //ftom
-      ftom_active = true;
-      is_hit = true;
-    }
-//    if (is_hit) {
-//      begin_5_timer();
-//    }
-
-    // if the control button is on, leave it.
-    if (!control_buttons[seq_count]) {
-      trellis.clrLED(map_seq_count_to_untz_index(seq_count-1));
-    }
-    trellis.setLED(map_seq_count_to_untz_index(seq_count));
-
-    seq_count++;
-    seq_count = seq_count % NUMBER_OF_STEPS;
-    
-    if (seq_count-1 == 0) {
-      trellis.clrLED(map_seq_count_to_untz_index(15));
-    }
+  // if the control button is on, leave it.
+  if (!control_buttons[seq_count]) {
+    trellis.clrLED(map_seq_count_to_untz_index(seq_count-1));
   }
+  trellis.setLED(map_seq_count_to_untz_index(seq_count));
 
-}
-
-ISR(TIMER1_COMPA_vect)
-{
-
-  if(snare_active == true){
-    s_multiple_of_5++; //another 5ms passed
-  }
-
-  if(kick_active == true)
-    k_multiple_of_5++; //another 5ms passed
-
-  if(hat_active == true)
-    h_multiple_of_5++; //another 5ms passed
-
-  if(crash_active == true)
-    c_multiple_of_5++; //another 5ms passed
-
-  if(tom1_active == true)
-    t1_multiple_of_5++; //another 5ms passed
-
-  if(ride_active == true)
-     r_multiple_of_5++; //another 5ms passed
-
-  if(ftom_active == true)
-     ft_multiple_of_5++; //another 5ms passed
-
+  seq_count++;
+  seq_count = seq_count % NUMBER_OF_STEPS;
   
-  if(snare_active==true&&s_multiple_of_5==(SNARE_TIME/TIMER_TIME)){
-    analogWrite(SNARE,0); 
-    snare_active=false;
-    s_multiple_of_5 = 0;
+  if (seq_count-1 == 0) {
+    trellis.clrLED(map_seq_count_to_untz_index(15));
   }
-  if(kick_active==true&&k_multiple_of_5==(KICK_TIME/TIMER_TIME)){
-    analogWrite(KICK,0); 
-    kick_active=false;
-    k_multiple_of_5 = 0;
-  }
-  if(hat_active==true&&h_multiple_of_5==(HAT_TIME/TIMER_TIME)){
-    analogWrite(HAT,0);
-    hat_active=false;
-    h_multiple_of_5 = 0;
-  }
-  if(crash_active==true&&c_multiple_of_5==(CRASH_TIME/TIMER_TIME)){
-    analogWrite(CRASH,0); 
-    crash_active=false;
-    c_multiple_of_5 = 0;
-  }
-  
-  if(tom1_active==true&&t1_multiple_of_5==(TOM1_TIME/TIMER_TIME)){
-    analogWrite(TOM1,0); 
-    tom1_active=false;
-    t1_multiple_of_5 = 0;
-  }
-  if(ride_active==true&&r_multiple_of_5==(RIDE_TIME/TIMER_TIME)){
-    analogWrite(RIDE,0); 
-    ride_active=false;
-    r_multiple_of_5 = 0;
-  }
-  
-  if(ftom_active==true&&ft_multiple_of_5==(FTOM_TIME/TIMER_TIME)){
-    analogWrite(FTOM,0); 
-    ftom_active=false;
-    ft_multiple_of_5 = 0;
-  }
-  begin_5_timer();
-}
 
-void begin_5_timer()
-{
-  TCCR1A = 0;
-  TCCR1B = 0;//stop timer
-  
-  OCR1A = TIMER_COUNTS; //will count to 5ms
-  TCCR1B |= (1 << WGM12); //compare mode
-  TCCR1B |= (1 << CS10);// 1024 prescaler
-  TCCR1B |= (1 << CS12);
-  TIMSK1 |= (1 << OCIE1A);//enable compare interrupt
-}
-
-void set_pwm_2_3_5_6_7_8_9_10()
-{
-  //timer 3
-  int prescaler = 1;
-  TCCR3B &= ~eraser; //Clear last 3 bits
-  TCCR3B |=prescaler; //Change frequency to 31KHz
-  //timer 4
-  TCCR4B &= ~eraser; //Clear last 3 bits
-  TCCR4B |=prescaler; //Change frequency to 31KHz
-  //timer 2
-  TCCR2B &= ~eraser; //Clear last 3 bits
-  TCCR2B |=prescaler; //Change frequency to 31KHz
 }
 
 
@@ -339,9 +189,9 @@ int get_drum_index(int i) {
   
   result = col*7+row;
 
-//  if (row == -1) {
-//    result = -col-1;
-//  }
+  if (row == -1) {
+    result = -col-1;
+  }
   
   // put it back together
 //  Serial.print("Row number: "); Serial.println(row);
@@ -366,6 +216,7 @@ int map_seq_count_to_untz_index(int seq_count) {
 void setup() {
   Serial.begin(9600);
   Serial.println("Trellis Demo");
+  Serial2.begin(9600);
   Serial3.begin(9600);
   // INT pin requires a pullup
   pinMode(INTPIN, INPUT);
@@ -377,7 +228,7 @@ void setup() {
 //  trellis.begin(0x70);  // only one
    trellis.begin(0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77);  // or four!
 
-  // light up all the LEDs in order
+//  // light up all the LEDs in order
 //  for (uint8_t i=0; i<numKeys; i++) {
 //    trellis.setLED(i);
 //    trellis.writeDisplay();    
@@ -407,31 +258,8 @@ void setup() {
 //  attachInterrupt(digitalPinToInterrupt(MUTE_IN),unmute,LOW);
 
   // Whenever pin 19 goes from low to high write drums
-  attachInterrupt(digitalPinToInterrupt(PULSE_IN),write_drums_high,RISING); 
- unmute();
-  
-  kick_active = false;
-  snare_active = false;
-  hat_active = false;
-  crash_active = false;
-  tom1_active = false;
-  ride_active = false;
-  ftom_active = false;
-  
-  //default to drums on
-  mute_flag = false;
-  
-  s_multiple_of_5 = 0;
-  k_multiple_of_5 = 0;
-  h_multiple_of_5 = 0;
-  c_multiple_of_5 = 0;
-  t1_multiple_of_5 = 0;
-  r_multiple_of_5 = 0;
-  ft_multiple_of_5 = 0;
-  
-  //setting pwm frequency to 31KHz on pins 2,3,5,6,7,8,9,10
-  set_pwm_2_3_5_6_7_8_9_10(); 
-  
+  attachInterrupt(digitalPinToInterrupt(PULSE_IN),new_beat,RISING); 
+
   //Serial stuff
   untz_poll = 0;
 
@@ -441,24 +269,7 @@ void setup() {
   
   
   Serial.println("Setup finished");
-  Serial.println("Setting up timer.");
-  begin_5_timer();
-  Serial.println("Setting up the timer...");
-  // The timer fucks around for 4.5 seconds before it works. 
-  // If we don't wait here, the drum will be held down for up to 4.5 seconds,
-  // This would probably fry the solenoid driving circuit.
-  delay(4500); 
-  Serial.println("Timer is good to go.");
   usr_ctrl = true;
-
-//  for(int i = 0; i<16; i++){
-//    sequence[2+7*i] = 255;
-//  }
-  sequence[4] = 255;
-  sequence[2+7*4] = 255;
-  sequence[2+7*8] = 255;
-  sequence[2+7*12] = 255;
-
 }
 
 
@@ -466,6 +277,7 @@ void loop() {
   
   delay(30); // 30ms delay is required, dont remove me!
   int drum_index = 0;
+  
   if(usr_ctrl){
     // If a button was just pressed or released...
     if (trellis.readSwitches()) {  
@@ -476,27 +288,27 @@ void loop() {
           
           // Alternate the LED
           // need to find the block number
-          drum_index = get_drum_index(i);
-          if (drum_index <= -1) {
-
-            // if the ctrl button just pressed was already on.
-            // toggle the bit at the end
-            if (control_buttons[1-drum_index]) {
-              control_buttons[1-drum_index] = false;
-            } else {
-              control_buttons[1-drum_index] = true;
-            }
-
-            
-            //I need to update the top row here
-            // fix drum index to 
-          } 
+//          drum_index = get_drum_index(i);
+//          if (drum_index <= -1) {
+//
+//            // if the ctrl button just pressed was already on.
+//            // toggle the bit at the end
+//            if (control_buttons[1-drum_index]) {
+//              control_buttons[1-drum_index] = false;
+//            } else {
+//              control_buttons[1-drum_index] = true;
+//            }
+//            //I need to update the top row here
+//            // fix drum index to 
+//          } 
           
           if (trellis.isLED(i)) {
             sequence[drum_index] = NO_HIT;
+            Serial2.print((char)get_drum_index(i));
             trellis.clrLED(i);
           } else {
             sequence[drum_index] = HARD;
+            Serial2.print((char)get_drum_index(i));
             trellis.setLED(i);
           }
         } 
@@ -507,35 +319,32 @@ void loop() {
   }
   trellis.writeDisplay();
 
-  while(Serial3.available() > 0){
-    char temp = (char)Serial3.read();
-    Serial3.flush();
+  while(Serial2.available() > 0){
+    char temp = (char)Serial2.read();
+//    Serial2.flush();
 //    Serial.println(temp);
     switch (temp) {
       case '1':
         seq_count = 0;
-        write_drums_high();
+        new_beat();
         break;
         case '2':
         seq_count = 4;
-        write_drums_high();
+        new_beat();
         break;
         case '3':
         seq_count = 8;
-        write_drums_high();
+        new_beat();
         break;
       case '4':
         seq_count = 12;
-        write_drums_high();
-        
+        new_beat();
         break;
       case 's':
-//        write_drums_high();
-//        Serial.println(temp);
+        new_beat();
         break;
       default:
         // shit is fucked.
-//      write_drums_high();
         break;
     }
 
