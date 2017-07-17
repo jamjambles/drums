@@ -4,19 +4,6 @@
 #include <Wire.h>
 #include "Adafruit_Trellis.h"
 
-/*************************************************** 
-  This example shows reading buttons and setting/clearing buttons in a loop
-  "momentary" mode has the LED light up only when a button is pressed
-  "latching" mode lets you turn the LED on/off when pressed
-
-  Up to 8 matrices can be used but this example will show 4 or 1
- ****************************************************/
-
-#define MOMENTARY 0
-#define LATCHING 1
-// set the mode here
-#define MODE LATCHING 
-
 
 Adafruit_Trellis matrix0 = Adafruit_Trellis();
 Adafruit_Trellis matrix1 = Adafruit_Trellis();
@@ -26,7 +13,8 @@ Adafruit_Trellis matrix4 = Adafruit_Trellis();
 Adafruit_Trellis matrix5 = Adafruit_Trellis();
 Adafruit_Trellis matrix6 = Adafruit_Trellis();
 Adafruit_Trellis matrix7 = Adafruit_Trellis();
-Adafruit_TrellisSet trellis =  Adafruit_TrellisSet(&matrix0, &matrix1, &matrix2, &matrix3,&matrix4, &matrix5, &matrix6, &matrix7);
+Adafruit_TrellisSet trellis =  Adafruit_TrellisSet( &matrix0, &matrix1, &matrix2, &matrix3,
+                                                    &matrix4, &matrix5, &matrix6, &matrix7);
 
 // set to however many you're working with here, up to 8
 #define NUMTRELLIS 8
@@ -131,12 +119,11 @@ unsigned int sequence[16*7];
 volatile int seq_count;
 volatile int untz_poll;
 
+volatile bool control_buttons[16];
+
 volatile bool mute_flag;
 
 volatile bool usr_ctrl = false;
-//Serial buffer
-volatile char ser_buf[2000];
-volatile int ser_buf_index;
 //pwm stuff
 int eraser = 7;
 
@@ -216,9 +203,12 @@ void write_drums_high()
 //    if (is_hit) {
 //      begin_5_timer();
 //    }
-    
+
+    // if the control button is on, leave it.
+    if (!control_buttons[seq_count]) {
+      trellis.clrLED(map_seq_count_to_untz_index(seq_count-1));
+    }
     trellis.setLED(map_seq_count_to_untz_index(seq_count));
-    trellis.clrLED(map_seq_count_to_untz_index(seq_count-1));
 
     seq_count++;
     seq_count = seq_count % NUMBER_OF_STEPS;
@@ -322,8 +312,11 @@ void set_pwm_2_3_5_6_7_8_9_10()
   TCCR2B |=prescaler; //Change frequency to 31KHz
 }
 
+
 // This whole thing is to map the buttons nicely to the drums,
 // without changing how the drums are addressed.
+// This function returns a negative number for the control row.
+// The first crtl button here is -1 to -16
 int get_drum_index(int i) {
   int result = 0;
 
@@ -345,13 +338,17 @@ int get_drum_index(int i) {
   row--;
   
   result = col*7+row;
+
+//  if (row == -1) {
+//    result = -col-1;
+//  }
   
   // put it back together
-  //Serial.print("Row number: "); Serial.println(row);
-  //Serial.print("Col number: "); Serial.println(col);
-  //Serial.print("Block number: "); Serial.println(block_num);
-  //Serial.print("Button number: "); Serial.println(button_num);
-  //Serial.print("Drum number: "); Serial.println(result);
+//  Serial.print("Row number: "); Serial.println(row);
+//  Serial.print("Col number: "); Serial.println(col);
+//  Serial.print("Block number: "); Serial.println(block_num);
+//  Serial.print("Button number: "); Serial.println(button_num);
+//  Serial.print("Drum number: "); Serial.println(result);
 
   
   return result;
@@ -408,7 +405,9 @@ void setup() {
 
 //  attachInterrupt(digitalPinToInterrupt(MUTE_IN),mute,HIGH); //Mute/unmute drums
 //  attachInterrupt(digitalPinToInterrupt(MUTE_IN),unmute,LOW);
-  attachInterrupt(digitalPinToInterrupt(PULSE_IN),write_drums_high,RISING); //Whenever pin 19 goes from low to high write drums
+
+  // Whenever pin 19 goes from low to high write drums
+  attachInterrupt(digitalPinToInterrupt(PULSE_IN),write_drums_high,RISING); 
  unmute();
   
   kick_active = false;
@@ -435,7 +434,7 @@ void setup() {
   
   //Serial stuff
   untz_poll = 0;
-  ser_buf_index = 0;
+
   //initialising sequence
   
   unsigned int sequence = {0};
@@ -444,9 +443,12 @@ void setup() {
   Serial.println("Setup finished");
   Serial.println("Setting up timer.");
   begin_5_timer();
-  Serial.println("Timer has been set up");
-  delay(4500);
-  Serial.println("Ready to go");
+  Serial.println("Setting up the timer...");
+  // The timer fucks around for 4.5 seconds before it works. 
+  // If we don't wait here, the drum will be held down for up to 4.5 seconds,
+  // This would probably fry the solenoid driving circuit.
+  delay(4500); 
+  Serial.println("Timer is good to go.");
   usr_ctrl = true;
 }
 
@@ -462,10 +464,25 @@ void loop() {
       for (uint8_t i=0; i<numKeys; i++) {
         // if it was pressed...
         if (trellis.justPressed(i)) {
-          //Serial.print("v"); Serial.println(i);
+          
           // Alternate the LED
           // need to find the block number
           drum_index = get_drum_index(i);
+          if (drum_index <= -1) {
+
+            // if the ctrl button just pressed was already on.
+            // toggle the bit at the end
+            if (control_buttons[1-drum_index]) {
+              control_buttons[1-drum_index] = false;
+            } else {
+              control_buttons[1-drum_index] = true;
+            }
+
+            
+            //I need to update the top row here
+            // fix drum index to 
+          } 
+          
           if (trellis.isLED(i)) {
             sequence[drum_index] = NO_HIT;
             trellis.clrLED(i);
@@ -482,17 +499,33 @@ void loop() {
   trellis.writeDisplay();
 
   while(Serial3.available() > 0){
-    ser_buf[ser_buf_index] = (char)Serial3.read();
-    Serial.println(ser_buf[ser_buf_index]);
-//    write_drums_high();  
-    if ((char)ser_buf[ser_buf_index] == '1'){
-      write_drums_high();    
+    char temp = (char)Serial3.read();
+    Serial.println(temp);
+    switch (temp) {
+      case '1':
+        seq_count = 0;
+        write_drums_high();
+        break;
+      case '2':
+        seq_count = 4;
+        write_drums_high();
+        break;
+      case '3':
+        seq_count = 8;
+        write_drums_high();
+        break;
+      case '4':
+        seq_count = 12;
+        write_drums_high();
+        break;
+      case 's':
+        write_drums_high();
+        break;
+      default:
+        // shit is fucked.
+//      write_drums_high();
+        break;
     }
-//    if(ser_buf_index==2000){
-//      ser_buf_index = 0;
-//    }else{
-//      ser_buf_index++;
-//    }
   }
   
 }
