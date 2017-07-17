@@ -472,37 +472,6 @@ void loop() {
       // go through every button
       for (uint8_t i=0; i<numKeys; i++) {
         // if it was pressed...
-        while(Serial3.available() > 0){
-    char temp = (char)Serial3.read();
-    Serial3.flush();
-//    Serial.println(temp);
-    switch (temp) {
-      case '1':
-        seq_count = 0;
-        write_drums_high();
-        break;
-        case '2':
-        seq_count = 4;
-        write_drums_high();
-        break;
-        case '3':
-        seq_count = 8;
-        write_drums_high();
-        break;
-      case '4':
-        seq_count = 12;
-        write_drums_high();
-        
-        break;
-      case 's':
-//        write_drums_high();
-//        Serial.println(temp);
-        break;
-      default:
-        // shit is fucked.
-//      write_drums_high();
-        break;
-    }
         if (trellis.justPressed(i)) {
           
           // Alternate the LED
@@ -538,37 +507,37 @@ void loop() {
   }
   trellis.writeDisplay();
 
-//  while(Serial3.available() > 0){
-//    char temp = (char)Serial3.read();
-//    Serial3.flush();
-////    Serial.println(temp);
-//    switch (temp) {
-//      case '1':
-//        seq_count = 0;
+  while(Serial3.available() > 0){
+    char temp = (char)Serial3.read();
+    Serial3.flush();
+//    Serial.println(temp);
+    switch (temp) {
+      case '1':
+        seq_count = 0;
+        write_drums_high();
+        break;
+        case '2':
+        seq_count = 4;
+        write_drums_high();
+        break;
+        case '3':
+        seq_count = 8;
+        write_drums_high();
+        break;
+      case '4':
+        seq_count = 12;
+        write_drums_high();
+        
+        break;
+      case 's':
 //        write_drums_high();
-//        break;
-//        case '2':
-//        seq_count = 4;
-//        write_drums_high();
-//        break;
-//        case '3':
-//        seq_count = 8;
-//        write_drums_high();
-//        break;
-//      case '4':
-//        seq_count = 12;
-//        write_drums_high();
-//        
-//        break;
-//      case 's':
-////        write_drums_high();
-////        Serial.println(temp);
-//        break;
-//      default:
-//        // shit is fucked.
-////      write_drums_high();
-//        break;
-//    }
+//        Serial.println(temp);
+        break;
+      default:
+        // shit is fucked.
+//      write_drums_high();
+        break;
+    }
 
   }
   
