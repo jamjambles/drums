@@ -213,6 +213,10 @@ int map_seq_count_to_untz_index(int seq_count) {
   return result;
 }
 
+void clear_trellis(void) {
+  trellis.clear();
+}
+
 void setup() {
   Serial.begin(9600);
   Serial.println("Trellis Demo");
@@ -342,6 +346,16 @@ void loop() {
         break;
       case 's':
         new_beat();
+        break;
+      case 'c':
+        //flash, then clear
+        for (uint8_t i=0; i<numKeys; i++) {
+          trellis.setLED(i);
+        }
+//        trellis.setBrightness(10);
+        trellis.writeDisplay();
+        delay(200);
+        clear_trellis();
         break;
       default:
         // shit is fucked.

@@ -361,10 +361,19 @@ void loop() {
           }else{
             sequence[coord] = MED;
           }
-      }//else control button
+      }
       
       //digitalWrite(SNARE,HIGH);
       Serial.println(accent_num);
+    //else control button
+    } else {
+      switch (coord) {
+        case -16:
+          for (int j = 0; j < 128; j++){
+            sequence[j] = NO_HIT;
+          }
+          
+      }
     }
   }
   
