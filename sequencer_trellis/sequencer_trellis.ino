@@ -213,8 +213,22 @@ int map_seq_count_to_untz_index(int seq_count) {
   return result;
 }
 
+void flash_trellis(void) {
+  for (uint8_t i=0; i<numKeys; i++) {
+    trellis.setLED(i);
+  }
+  trellis.writeDisplay();
+  delay(200);
+  trellis.clear();  
+}
+
 void clear_trellis(void) {
-  trellis.clear();
+  // clear the lights
+  trellis.clear();  
+  // this should clear the drum sequence on the other mega
+  Serial2.print((char)-16);
+  Serial2.flush();
+
 }
 
 void setup() {
@@ -268,9 +282,10 @@ void setup() {
   untz_poll = 0;
 
   //initialising sequence
-  
-//  sequence = {0};
-  
+
+//        trellis.setBrightness(10);
+  flash_trellis();
+  clear_trellis();
   
   Serial.println("Setup finished");
   usr_ctrl = true;
@@ -326,7 +341,7 @@ void loop() {
   while(Serial2.available() > 0){
     char temp = (char)Serial2.read();
 //    Serial2.flush();
-//    Serial.println(temp);
+    Serial.println(temp);
     switch (temp) {
       case '1':
         seq_count = 0;
@@ -349,13 +364,9 @@ void loop() {
         break;
       case 'c':
         //flash, then clear
-        for (uint8_t i=0; i<numKeys; i++) {
-          trellis.setLED(i);
-        }
-//        trellis.setBrightness(10);
-        trellis.writeDisplay();
-        delay(200);
+        flash_trellis();
         clear_trellis();
+        
         break;
       default:
         // shit is fucked.
