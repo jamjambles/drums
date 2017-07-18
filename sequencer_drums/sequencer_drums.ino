@@ -334,6 +334,7 @@ void setup() {
   // This would probably fry the solenoid driving circuit.
   delay(4500); 
   Serial.println("Timer is good to go.");
+
   Serial2.println('c');
   Serial2.flush();
 }
@@ -344,6 +345,7 @@ void loop() {
   while(Serial2.available() > 0){
     char in = (char)Serial2.read();
     int coord = (int)in;
+    //Serial.println(coord);
     if (coord >= 0){
       int beat_num = (int)coord/(int)7;
       int accent_num = beat_num%4;
@@ -364,12 +366,13 @@ void loop() {
       }
       
       //digitalWrite(SNARE,HIGH);
-      Serial.println(accent_num);
+      //Serial.println(accent_num);
     //else control button
     } else {
       switch (coord) {
         case -16:
-          for (int j = 0; j < 128; j++){
+          //Serial.println("here");
+          for (int j = 0; j < 16*7; j++){
             sequence[j] = NO_HIT;
           }
           
