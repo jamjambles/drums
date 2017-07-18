@@ -24,7 +24,7 @@
 //hit strengths. Provides ability to accent notes
 #define HARD    255
 #define MED     230
-#define SOFT    200
+#define SOFT    180
 #define NO_HIT  0
 
 //interupt pins
@@ -47,17 +47,17 @@ const byte PULSE_IN = 18; // The beats from the pi
 #define TIMER_RES     (1 / ( CLOCK_SPEED / PRESCALER))
 #define TIMER_TIME    5 //ms
 
-//#define TIMER_COUNTS  ((TIMER_TIME*10^-3 / TIMER_RES) -1)
-#define TIMER_COUNTS 77
+#define TIMER_COUNTS  ((TIMER_TIME*10^-3 / TIMER_RES) -1)
+//#define TIMER_COUNTS 77
 
 //drum times: how long each drum strike is
-#define KICK_TIME   150 //ms
-#define SNARE_TIME  80  //ms  
-#define HAT_TIME    80  //ms
-#define CRASH_TIME  150  //ms
-#define TOM1_TIME   80
-#define RIDE_TIME   80
-#define FTOM_TIME   80
+#define KICK_TIME   100 //ms
+#define SNARE_TIME  30  //ms  
+#define HAT_TIME    40  //ms
+#define CRASH_TIME  100  //ms
+#define TOM1_TIME   50
+#define RIDE_TIME   30
+#define FTOM_TIME   30
 
 //#define KICK_TIME   0 //ms
 //#define SNARE_TIME  10  //ms  
@@ -341,13 +341,28 @@ void loop() {
   while(Serial2.available() > 0){
     char in = (char)Serial2.read();
     int coord = (int)in;
-    if (sequence[coord]==255){
-      sequence[coord] = 0;
-    }else{
-      sequence[coord] = 255;
+    if (coord >= 0){
+      int beat_num = (int)coord/(int)7;
+      int accent_num = beat_num%4;
+      switch(accent_num){
+        case 0:
+          if (sequence[coord]!=0){
+            sequence[coord] = 0;
+          }else{
+            sequence[coord] = HARD;
+          }
+          break;
+        default:
+          if (sequence[coord]!=0){
+            sequence[coord] = 0;
+          }else{
+            sequence[coord] = SOFT;
+          }
+      }//else control button
+      
+      //digitalWrite(SNARE,HIGH);
+      Serial.println(accent_num);
     }
-    //digitalWrite(SNARE,HIGH);
-    Serial.println(coord);
   }
   
   while(Serial3.available() > 0){
