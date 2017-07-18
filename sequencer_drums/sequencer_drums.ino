@@ -23,7 +23,7 @@
 
 //hit strengths. Provides ability to accent notes
 #define HARD    255
-#define MED     230
+#define MED     200
 #define SOFT    180
 #define NO_HIT  0
 
@@ -52,12 +52,12 @@ const byte PULSE_IN = 18; // The beats from the pi
 
 //drum times: how long each drum strike is
 #define KICK_TIME   100 //ms
-#define SNARE_TIME  30  //ms  
+#define SNARE_TIME  40  //ms  
 #define HAT_TIME    40  //ms
 #define CRASH_TIME  100  //ms
 #define TOM1_TIME   50
 #define RIDE_TIME   30
-#define FTOM_TIME   30
+#define FTOM_TIME   50
 
 //#define KICK_TIME   0 //ms
 //#define SNARE_TIME  10  //ms  
@@ -282,6 +282,8 @@ void setup() {
   Serial.begin(9600); //just to print to serial monitor 
   Serial2.begin(9600); //communicate to the trellis arduino
   Serial3.begin(9600); //receive beats 
+
+
   
   // now do the drums
   seq_count = 0;
@@ -332,7 +334,8 @@ void setup() {
   // This would probably fry the solenoid driving circuit.
   delay(4500); 
   Serial.println("Timer is good to go.");
-
+  Serial2.println('c');
+  Serial2.flush();
 }
 
 
@@ -356,7 +359,7 @@ void loop() {
           if (sequence[coord]!=0){
             sequence[coord] = 0;
           }else{
-            sequence[coord] = SOFT;
+            sequence[coord] = MED;
           }
       }//else control button
       
