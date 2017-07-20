@@ -60,7 +60,7 @@ const byte PULSE_IN = 18; // The beats from the pi
 #define FTOM_TIME   50
 
 //#define KICK_TIME   0 //ms
-//#define SNARE_TIME  10  //ms  
+//#define SNARE_TIME  10  //ms
 //#define HAT_TIME    0  //ms
 //#define CRASH_TIME  0  //ms
 //#define TOM1_TIME   0
@@ -84,7 +84,7 @@ volatile int t1_multiple_of_5;
 volatile int r_multiple_of_5;
 volatile int ft_multiple_of_5;
 
-int sequence[16*7];
+int sequence[16 * 7];
 
 //index to sequence array
 volatile int seq_count;
@@ -101,85 +101,85 @@ int eraser = 7;
 int loop_count = 0;
 
 
-void mute(){
+void mute() {
   mute_flag = true;
 }
 
-void unmute(){
+void unmute() {
   seq_count = 0;
-  
+
   mute_flag = false;
 }
 
-void phase_rst(){
-  seq_count = 0;   
+void phase_rst() {
+  seq_count = 0;
 }
 
 
 void write_drums_high()
 {
 
-  if(mute_flag == false)
-  { 
+  if (mute_flag == false)
+  {
     bool is_hit = false;
-    
-    if(snare_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET] != NO_HIT)
+
+    if (snare_active == false && sequence[seq_count * NUMBER_OF_DRUMS + SNARE_OFFSET] != NO_HIT)
     {
-      analogWrite(SNARE,sequence[seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET]);   //snare
+      analogWrite(SNARE, sequence[seq_count * NUMBER_OF_DRUMS + SNARE_OFFSET]); //snare
       snare_active = true;
       is_hit = true;
     }
-    
-    if(kick_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + KICK_OFFSET] != NO_HIT)
+
+    if (kick_active == false && sequence[seq_count * NUMBER_OF_DRUMS + KICK_OFFSET] != NO_HIT)
     {
-      analogWrite(KICK,sequence[seq_count*NUMBER_OF_DRUMS + KICK_OFFSET]);  //kick
+      analogWrite(KICK, sequence[seq_count * NUMBER_OF_DRUMS + KICK_OFFSET]); //kick
       kick_active = true;
       is_hit = true;
     }
-    
-    if(hat_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + HAT_OFFSET] != NO_HIT) 
+
+    if (hat_active == false && sequence[seq_count * NUMBER_OF_DRUMS + HAT_OFFSET] != NO_HIT)
     {
-      analogWrite(HAT,sequence[seq_count*NUMBER_OF_DRUMS + HAT_OFFSET]);  //hat
+      analogWrite(HAT, sequence[seq_count * NUMBER_OF_DRUMS + HAT_OFFSET]); //hat
       hat_active = true;
       is_hit = true;
     }
-    
-    if(crash_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + CRASH_OFFSET] != NO_HIT) 
+
+    if (crash_active == false && sequence[seq_count * NUMBER_OF_DRUMS + CRASH_OFFSET] != NO_HIT)
     {
-      analogWrite(CRASH,sequence[seq_count*NUMBER_OF_DRUMS + CRASH_OFFSET]);  //crash
+      analogWrite(CRASH, sequence[seq_count * NUMBER_OF_DRUMS + CRASH_OFFSET]); //crash
       crash_active = true;
       is_hit = true;
     }
-    
-    if(tom1_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + TOM1_OFFSET] != NO_HIT) 
+
+    if (tom1_active == false && sequence[seq_count * NUMBER_OF_DRUMS + TOM1_OFFSET] != NO_HIT)
     {
-      analogWrite(TOM1,sequence[seq_count*NUMBER_OF_DRUMS + TOM1_OFFSET]);  //tom1
+      analogWrite(TOM1, sequence[seq_count * NUMBER_OF_DRUMS + TOM1_OFFSET]); //tom1
       tom1_active = true;
       is_hit = true;
     }
-    
-    if(ride_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + RIDE_OFFSET] != NO_HIT) 
+
+    if (ride_active == false && sequence[seq_count * NUMBER_OF_DRUMS + RIDE_OFFSET] != NO_HIT)
     {
-      analogWrite(RIDE,sequence[seq_count*NUMBER_OF_DRUMS + RIDE_OFFSET]);  //ride
+      analogWrite(RIDE, sequence[seq_count * NUMBER_OF_DRUMS + RIDE_OFFSET]); //ride
       ride_active = true;
       is_hit = true;
     }
-    
-    if(ftom_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + FTOM_OFFSET] != NO_HIT) 
+
+    if (ftom_active == false && sequence[seq_count * NUMBER_OF_DRUMS + FTOM_OFFSET] != NO_HIT)
     {
-      analogWrite(FTOM,sequence[seq_count*NUMBER_OF_DRUMS + FTOM_OFFSET]);  //ftom
+      analogWrite(FTOM, sequence[seq_count * NUMBER_OF_DRUMS + FTOM_OFFSET]); //ftom
       ftom_active = true;
       is_hit = true;
     }
-//    if (is_hit) {
-//      begin_5_timer();
-//    }
+    //    if (is_hit) {
+    //      begin_5_timer();
+    //    }
 
     // if the control button is on, leave it.
-   
+
     seq_count++;
     seq_count = seq_count % NUMBER_OF_STEPS;
-    
+
   }
 
 }
@@ -187,64 +187,64 @@ void write_drums_high()
 ISR(TIMER1_COMPA_vect)
 {
 
-  if(snare_active == true){
+  if (snare_active == true) {
     s_multiple_of_5++; //another 5ms passed
   }
 
-  if(kick_active == true)
+  if (kick_active == true)
     k_multiple_of_5++; //another 5ms passed
 
-  if(hat_active == true)
+  if (hat_active == true)
     h_multiple_of_5++; //another 5ms passed
 
-  if(crash_active == true)
+  if (crash_active == true)
     c_multiple_of_5++; //another 5ms passed
 
-  if(tom1_active == true)
+  if (tom1_active == true)
     t1_multiple_of_5++; //another 5ms passed
 
-  if(ride_active == true)
-     r_multiple_of_5++; //another 5ms passed
+  if (ride_active == true)
+    r_multiple_of_5++; //another 5ms passed
 
-  if(ftom_active == true)
-     ft_multiple_of_5++; //another 5ms passed
+  if (ftom_active == true)
+    ft_multiple_of_5++; //another 5ms passed
 
-  
-  if(snare_active==true&&s_multiple_of_5==(SNARE_TIME/TIMER_TIME)){
-    analogWrite(SNARE,0); 
-    snare_active=false;
+
+  if (snare_active == true && s_multiple_of_5 == (SNARE_TIME / TIMER_TIME)) {
+    analogWrite(SNARE, 0);
+    snare_active = false;
     s_multiple_of_5 = 0;
   }
-  if(kick_active==true&&k_multiple_of_5==(KICK_TIME/TIMER_TIME)){
-    analogWrite(KICK,0); 
-    kick_active=false;
+  if (kick_active == true && k_multiple_of_5 == (KICK_TIME / TIMER_TIME)) {
+    analogWrite(KICK, 0);
+    kick_active = false;
     k_multiple_of_5 = 0;
   }
-  if(hat_active==true&&h_multiple_of_5==(HAT_TIME/TIMER_TIME)){
-    analogWrite(HAT,0);
-    hat_active=false;
+  if (hat_active == true && h_multiple_of_5 == (HAT_TIME / TIMER_TIME)) {
+    analogWrite(HAT, 0);
+    hat_active = false;
     h_multiple_of_5 = 0;
   }
-  if(crash_active==true&&c_multiple_of_5==(CRASH_TIME/TIMER_TIME)){
-    analogWrite(CRASH,0); 
-    crash_active=false;
+  if (crash_active == true && c_multiple_of_5 == (CRASH_TIME / TIMER_TIME)) {
+    analogWrite(CRASH, 0);
+    crash_active = false;
     c_multiple_of_5 = 0;
   }
-  
-  if(tom1_active==true&&t1_multiple_of_5==(TOM1_TIME/TIMER_TIME)){
-    analogWrite(TOM1,0); 
-    tom1_active=false;
+
+  if (tom1_active == true && t1_multiple_of_5 == (TOM1_TIME / TIMER_TIME)) {
+    analogWrite(TOM1, 0);
+    tom1_active = false;
     t1_multiple_of_5 = 0;
   }
-  if(ride_active==true&&r_multiple_of_5==(RIDE_TIME/TIMER_TIME)){
-    analogWrite(RIDE,0); 
-    ride_active=false;
+  if (ride_active == true && r_multiple_of_5 == (RIDE_TIME / TIMER_TIME)) {
+    analogWrite(RIDE, 0);
+    ride_active = false;
     r_multiple_of_5 = 0;
   }
-  
-  if(ftom_active==true&&ft_multiple_of_5==(FTOM_TIME/TIMER_TIME)){
-    analogWrite(FTOM,0); 
-    ftom_active=false;
+
+  if (ftom_active == true && ft_multiple_of_5 == (FTOM_TIME / TIMER_TIME)) {
+    analogWrite(FTOM, 0);
+    ftom_active = false;
     ft_multiple_of_5 = 0;
   }
   begin_5_timer();
@@ -254,7 +254,7 @@ void begin_5_timer()
 {
   TCCR1A = 0;
   TCCR1B = 0;//stop timer
-  
+
   OCR1A = TIMER_COUNTS; //will count to 5ms
   TCCR1B |= (1 << WGM12); //compare mode
   TCCR1B |= (1 << CS10);// 1024 prescaler
@@ -267,44 +267,44 @@ void set_pwm_2_3_5_6_7_8_9_10()
   //timer 3
   int prescaler = 1;
   TCCR3B &= ~eraser; //Clear last 3 bits
-  TCCR3B |=prescaler; //Change frequency to 31KHz
+  TCCR3B |= prescaler; //Change frequency to 31KHz
   //timer 4
   TCCR4B &= ~eraser; //Clear last 3 bits
-  TCCR4B |=prescaler; //Change frequency to 31KHz
+  TCCR4B |= prescaler; //Change frequency to 31KHz
   //timer 2
   TCCR2B &= ~eraser; //Clear last 3 bits
-  TCCR2B |=prescaler; //Change frequency to 31KHz
+  TCCR2B |= prescaler; //Change frequency to 31KHz
 }
 
 
 void setup() {
   //setting up the serials
-  Serial.begin(9600); //just to print to serial monitor 
+  Serial.begin(9600); //just to print to serial monitor
   Serial2.begin(9600); //communicate to the trellis arduino
-  Serial3.begin(9600); //receive beats 
+  Serial3.begin(9600); //receive beats
 
 
-  
+
   // now do the drums
   seq_count = 0;
-  pinMode(KICK,OUTPUT);
-  pinMode(SNARE,OUTPUT);
-  pinMode(HAT,OUTPUT);
-  pinMode(CRASH,OUTPUT);
-  pinMode(TOM1,OUTPUT);
-  pinMode(RIDE,OUTPUT);
-  pinMode(FTOM,OUTPUT);
-  
+  pinMode(KICK, OUTPUT);
+  pinMode(SNARE, OUTPUT);
+  pinMode(HAT, OUTPUT);
+  pinMode(CRASH, OUTPUT);
+  pinMode(TOM1, OUTPUT);
+  pinMode(RIDE, OUTPUT);
+  pinMode(FTOM, OUTPUT);
+
   TCCR1A = 0; //Timer 1 (used by servo lib)
   TCCR1B = 0;
 
-//  attachInterrupt(digitalPinToInterrupt(MUTE_IN),mute,HIGH); //Mute/unmute drums
-//  attachInterrupt(digitalPinToInterrupt(MUTE_IN),unmute,LOW);
+  //  attachInterrupt(digitalPinToInterrupt(MUTE_IN),mute,HIGH); //Mute/unmute drums
+  //  attachInterrupt(digitalPinToInterrupt(MUTE_IN),unmute,LOW);
 
   // Whenever pin 19 goes from low to high write drums
-  attachInterrupt(digitalPinToInterrupt(PULSE_IN),write_drums_high,RISING); 
+  attachInterrupt(digitalPinToInterrupt(PULSE_IN), write_drums_high, RISING);
   unmute();
-  
+
   kick_active = false;
   snare_active = false;
   hat_active = false;
@@ -312,10 +312,10 @@ void setup() {
   tom1_active = false;
   ride_active = false;
   ftom_active = false;
-  
+
   //default to drums on
   mute_flag = false;
-  
+
   s_multiple_of_5 = 0;
   k_multiple_of_5 = 0;
   h_multiple_of_5 = 0;
@@ -323,16 +323,16 @@ void setup() {
   t1_multiple_of_5 = 0;
   r_multiple_of_5 = 0;
   ft_multiple_of_5 = 0;
-  
+
   //setting pwm frequency to 31KHz on pins 2,3,5,6,7,8,9,10
-  set_pwm_2_3_5_6_7_8_9_10(); 
-  
+  set_pwm_2_3_5_6_7_8_9_10();
+
   begin_5_timer();
   Serial.println("Setting up the timer...");
-  // The timer fucks around for 4.5 seconds before it works. 
+  // The timer fucks around for 4.5 seconds before it works.
   // If we don't wait here, the drum will be held down for up to 4.5 seconds,
   // This would probably fry the solenoid driving circuit.
-  delay(4500); 
+  delay(4500);
   Serial.println("Timer is good to go.");
 
   Serial2.println('c');
@@ -341,61 +341,65 @@ void setup() {
 
 
 void loop() {
-  //This means there is a new coordinate 
-  while(Serial2.available() > 0){
+  //This means there is a new coordinate
+  while (Serial2.available() > 0) {
     char in = (char)Serial2.read();
     int coord = (int)in;
     //Serial.println(coord);
-    if (coord >= 0){
-      int beat_num = (int)coord/(int)7;
-      int accent_num = beat_num%4;
-      switch(accent_num){
+    if (coord >= 0) {
+      int beat_num = (int)coord / (int)7;
+      int accent_num = beat_num % 4;
+      switch (accent_num) {
         case 0:
-          if (sequence[coord]!=0){
+          if (sequence[coord] != 0) {
             sequence[coord] = 0;
-          }else{
+          } else {
             sequence[coord] = HARD;
           }
           break;
         default:
-          if (sequence[coord]!=0){
+          if (sequence[coord] != 0) {
             sequence[coord] = 0;
-          }else{
+          } else {
             sequence[coord] = MED;
           }
       }
-      
+
       //digitalWrite(SNARE,HIGH);
       //Serial.println(accent_num);
-    //else control button
+      //else control button
     } else {
       switch (coord) {
         case -16:
           //Serial.println("here");
-          for (int j = 0; j < 16*7; j++){
+          for (int j = 0; j < 16 * 7; j++) {
             sequence[j] = NO_HIT;
           }
-          
+
       }
     }
   }
-  
-  while(Serial3.available() > 0){
+
+  while (Serial3.available() > 0) {
+    int sequence_position = 0;
+    int sequence_size = 16 * 7;
+    char sequence_char;
+
     char temp = (char)Serial3.read();
     Serial3.flush();
     Serial2.println(temp);
     Serial2.flush();
-//    Serial.println(temp);
+    Serial.println(temp);
     switch (temp) {
       case '1':
         seq_count = 0;
         write_drums_high();
         break;
-        case '2':
+      case '2':
         seq_count = 4;
         write_drums_high();
         break;
-        case '3':
+      case '3':
         seq_count = 8;
         write_drums_high();
         break;
@@ -405,15 +409,45 @@ void loop() {
         break;
       case 's':
         write_drums_high();
-//        Serial.println(temp);
+        //        Serial.println(temp);
+        break;
+
+         // this is the special character to start reading in a drum sequence from the pi
+      case 'z':
+        while (Serial3.available() > 0) {
+          if (sequence_position > sequence_size) {
+            Serial.println("input sequence is too long.");
+            break;
+          }
+          sequence_char = (char)Serial3.read();
+          Serial.println(sequence_char);
+          switch (sequence_char) {
+            case '0': // no hit
+              sequence[sequence_position] = NO_HIT;
+              break;
+            case '1': // soft hit
+              sequence[sequence_position] = SOFT;
+              break;
+            case '2': // medium hit
+              sequence[sequence_position] = MED;
+              break;
+            case '3': // hard hit
+              sequence[sequence_position] = HARD;
+              break;
+            default:
+              Serial.println("dud character, was expecting \'0\', \'1\', \'2\' or \'3\'");
+          }
+          sequence_position++;
+        }
+        //        Serial.println(temp);
         break;
       default:
         // shit is fucked.
-//      write_drums_high();
+        //      write_drums_high();
         break;
     }
 
   }
-  
+
 }
 
