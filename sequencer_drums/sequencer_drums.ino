@@ -20,7 +20,7 @@
 #define FTOM_OFFSET   6
 
 // hit strengths in pwm. 
-// Provides ability to accent notes
+// Provides ability to accent notes.
 #define HARD    255
 #define MED     200
 #define SOFT    180
