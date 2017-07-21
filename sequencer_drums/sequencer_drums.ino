@@ -370,6 +370,10 @@ bool read_drum_sequence = false;
 int sequence_position = 0; // initialised to 0
 int sequence_size = 16 * 7; // This is one bar of drum hits, will need to change for songs.
 
+// These three guys are for reading the drum sequence in from the other diuno
+bool read_drum_sequence_duino = false;
+int sequence_position_duino = 0; // initialised to 0
+
 void loop() {
 
   /* 
@@ -389,7 +393,7 @@ void loop() {
     * This not only sounds much nicer and more human but allows the drums to hit much faster.
     *      ie. at semi-quaver time instead of just quaver time.
     */
-    if (coord >= 0 && usr_ctrl) {
+    if (coord >= 0 && coord < 112 && usr_ctrl) {
       int beat_num = (int)coord / (int)7;
       int accent_num = beat_num % 4;
       switch (accent_num) {
@@ -423,11 +427,65 @@ void loop() {
    *    - any other trellis button that needs to change the drum sequence here?
    */
     } else {
+      char sequence_char;
+      
       switch (coord) {
-        case -16:
-          //Serial.println("here");
-          for (int j = 0; j < 16 * 7; j++) {
+        case -16: // clear drum sequence.
+          for (int j = 0; j < SEQUENCE_LENGTH; j++) {
             sequence[j] = NO_HIT;
+          }
+          break;
+
+        // load in sequence from trellis
+        case (int)'z': //load in a sequence from Arduino trellis. 'z' is bigger than 112 luckily
+
+          read_drum_sequence_duino == true;
+          // Begin protocol to recieve a sequence from the trellis duino
+          while (Serial2.available() > 0) {
+            sequence_char = (char)Serial2.read();
+
+            // occurs if we have recieved an 'f' (or garbage)
+            if (read_drum_sequence_duino == false) {
+              break;
+            }
+        
+            // check if we have overflowed our buffer.
+            if (sequence_position_duino >= SEQUENCE_LENGTH) {
+              Serial.println("input sequence from arduino is too long. wtf mate");
+              break;
+            }
+      
+            /*
+             * Same protocol as reading in a sequence from the Pi
+             * TODO:
+             *    - check the sequence length is corrent ocne we have finished reading
+             *    - Fucking progmem shit for big sequences.
+             */
+            switch ((char)sequence_char) {
+              case '0':
+                sequence[sequence_position_duino] = NO_HIT;
+                sequence_position_duino++;
+                break;
+              case '1':
+                sequence[sequence_position_duino] = SOFT;
+                sequence_position_duino++;
+                break;
+              case '2':
+                sequence[sequence_position_duino] = MED;
+                sequence_position_duino++;
+                break;
+              case '3':
+                sequence[sequence_position_duino] = HARD;
+                sequence_position_duino++;
+                break;
+              case 'f':
+                read_drum_sequence_duino = false;
+                break;
+              default:
+                Serial.println("dud character, was expecting '0', '1', '2' or '3'");
+                // I don't know if I should ignore it or if I should exit...
+                read_drum_sequence_duino = false;
+            }
           }
           break;
         default:
