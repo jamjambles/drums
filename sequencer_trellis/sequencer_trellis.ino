@@ -50,107 +50,84 @@ Adafruit_TrellisSet trellis =  Adafruit_TrellisSet( &matrix0, &matrix1, &matrix2
 #define RIDE_OFFSET   5
 #define FTOM_OFFSET   6
 
-//hit strengths. Provides ability to accent notes
+// hit strengths. Provides ability to accent notes
 #define HARD    255
 #define MED     230
 #define SOFT    200
 #define NO_HIT  0
 
-//interupt pins
+// interupt pins
 const byte PULSE_IN = 18; // The beats from the pi
-//const byte MUTE_IN = 19; // Will mute/unmute the drums
+
+////////////////////////////
+// control button indexes //
+////////////////////////////
+// We can switch between these 4 bars, the state will be saved when changing bars.
+// When you change bars, the trellis will change state right away but the drums will keep with the current sequence till next bar.
+// or the trellis will only change at the end of the bar.
+// Only one of these four can be on at a time, pressing one turns off the others.
+#define FIRST_BAR   0
+#define SECOND_BAR  1
+#define THIRD_BAR   2
+#define FOURTH_BAR  3
 
 
-//output drum pins
-#define SNARE 8
-#define KICK  7
-#define HAT   3
-#define CRASH 2
-#define TOM1  9
-#define RIDE  5
-#define FTOM  6
+#define CLR_DRUM 4 // while this is on, any drum buttons pressed will have their lines cleared.
+#define CLR_CURR_BAR 5 // only flashes while you hold it and clears the current bar right away
 
-//timer
-#define CLOCK_SPEED   16*10^6 //16 MHz
-#define PRESCALER     1024
-#define TIMER_RES     (1 / ( CLOCK_SPEED / PRESCALER))
-#define TIMER_TIME    5 //ms
+// these fill in the notes every single, second or fourth note starting from the drum pressed.
+//      TODO: should it wrap around? (no, I don't think so, what do the people expect?)
+// these are toggle buttons.
+//      ie. they will turn everything on if anything is off, and they will turn everything off if everything is on.
+#define DRUM_FILL_CROTCHET 6 // need to hold down?
+#define DRUM_FILL_QUAVER 7 // need to hold down?
+#define DRUM_FILL_SEMIQUAVER 8 // need to hold down?
 
-//#define TIMER_COUNTS  ((TIMER_TIME*10^-3 / TIMER_RES) -1)
-#define TIMER_COUNTS 77
+// Will need to communicate with the drum controller and the Raspberry Pi.
+// This is a stretch goal...
+#define REALIGN_DOWNBEAT_PHASE 9
 
-//drum times: how long each drum strike is
-#define KICK_TIME   150 //ms
-#define SNARE_TIME  80  //ms  
-#define HAT_TIME    80  //ms
-#define CRASH_TIME  150  //ms
-#define TOM1_TIME   80
-#define RIDE_TIME   80
-#define FTOM_TIME   80
+// 
+// Only one of these three can be on at a time, pressing one turns off the others.
+#define SOFT_ACCENT 10 // need to hold down?
+#define MED_ACCENT 11 // need to hold down?
+#define HARD_ACCENT 12 // need to hold down?
 
-//#define KICK_TIME   0 //ms
-//#define SNARE_TIME  10  //ms  
-//#define HAT_TIME    0  //ms
-//#define CRASH_TIME  0  //ms
-//#define TOM1_TIME   0
-//#define RIDE_TIME   0
-//#define FTOM_TIME   0
+// These are just fillers really, but might be pretty cool to use.
+// So far the idea is that they fill bar 1/2/3/4 with a preset pattern, clearing what was already there.
+#define PRESET_1 13
+#define PRESET_2 14
 
-//interupt stuff
-volatile bool kick_active;
-volatile bool snare_active;
-volatile bool hat_active;
-volatile bool crash_active;
-volatile bool tom1_active;
-volatile bool ride_active;
-volatile bool ftom_active;
+// Clears all 4 bars, basically the reset everything button.
+// Not sure if this is necessary. In fact it might be a very dangerous button to accidentally press.
+#define CLR_ALL 15
 
-volatile int s_multiple_of_5;
-volatile int k_multiple_of_5;
-volatile int h_multiple_of_5;
-volatile int c_multiple_of_5;
-volatile int t1_multiple_of_5;
-volatile int r_multiple_of_5;
-volatile int ft_multiple_of_5;
+////////////////////////////
 
-int sequence[16*7];
+
+// Not all of these are toggle buttons
+volatile bool control_button_active[16];
+
+// you will be able to program 4 bars independantly of each other.
+int sequence[4][16*7];
 
 //index to sequence array
 volatile int seq_count;
-volatile int untz_poll;
-
-volatile bool control_buttons[16];
-
-volatile bool mute_flag;
 
 volatile bool usr_ctrl = false;
-//pwm stuff
-int eraser = 7;
 
-int loop_count = 0;
-
-
-void mute(){
-  mute_flag = true;
-}
-
-void unmute(){
-  seq_count = 0;
-  
-  mute_flag = false;
-}
-
-void phase_rst(){
-  seq_count = 0;   
-}
-
-
+/*
+ * What are we going to do here?
+ */
 void new_beat()
 {
   // if the control button is on, leave it.
-  if (!control_buttons[seq_count]) {
+  if (control_button_active[seq_count]) {
+    // What do I do here???
+  } else {
     trellis.clrLED(map_seq_count_to_untz_index(seq_count-1));
   }
+  
   trellis.setLED(map_seq_count_to_untz_index(seq_count));
 
   seq_count++;
@@ -224,8 +201,9 @@ void flash_trellis(void) {
 
 void clear_trellis(void) {
   // clear the lights
-  trellis.clear();  
-  // this should clear the drum sequence on the other mega
+  trellis.clear();
+  
+  // send a message to the other mega to clear the drum sequence.
   Serial2.print((char)-16);
   Serial2.flush();
 
@@ -240,55 +218,27 @@ void setup() {
   pinMode(INTPIN, INPUT);
   digitalWrite(INTPIN, HIGH);
 
-  
-  // begin() with the addresses of each panel in order
-  // I find it easiest if the addresses are in order
-//  trellis.begin(0x70);  // only one
-   trellis.begin(0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77);  // or four!
+  // Set up trellis
+  trellis.begin(0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77);
 
-//  // light up all the LEDs in order
-//  for (uint8_t i=0; i<numKeys; i++) {
-//    trellis.setLED(i);
-//    trellis.writeDisplay();    
-//    delay(2);
-//  }
-//  // then turn them off
-//  for (uint8_t i=0; i<numKeys; i++) {
-//    trellis.clrLED(i);
-//    trellis.writeDisplay();    
-//    delay(2);
-//  }
-
-  // now do the drums
+  // This sets the drums to the initial beat.
   seq_count = 0;
-  pinMode(KICK,OUTPUT);
-  pinMode(SNARE,OUTPUT);
-  pinMode(HAT,OUTPUT);
-  pinMode(CRASH,OUTPUT);
-  pinMode(TOM1,OUTPUT);
-  pinMode(RIDE,OUTPUT);
-  pinMode(FTOM,OUTPUT);
-  
-  TCCR1A = 0; //Timer 1 (used by servo lib)
-  TCCR1B = 0;
 
+  // This might be used for live mode.
 //  attachInterrupt(digitalPinToInterrupt(MUTE_IN),mute,HIGH); //Mute/unmute drums
 //  attachInterrupt(digitalPinToInterrupt(MUTE_IN),unmute,LOW);
 
   // Whenever pin 19 goes from low to high write drums
-  attachInterrupt(digitalPinToInterrupt(PULSE_IN),new_beat,RISING); 
+  attachInterrupt(digitalPinToInterrupt(PULSE_IN),new_beat,RISING);
 
-  //Serial stuff
-  untz_poll = 0;
-
-  //initialising sequence
-
-//        trellis.setBrightness(10);
+  // Trellis animation to show that it has started and is good to go.
   flash_trellis();
   clear_trellis();
   
-  Serial.println("Setup finished");
+  // Only allow users to press buttons once 
   usr_ctrl = true;
+  Serial.println("Setup finished");
+  
 }
 
 
@@ -296,48 +246,44 @@ void loop() {
   
   delay(30); // 30ms delay is required, dont remove me!
   int drum_index = 0;
+  int ctrl_button_num = 0;
   
   if(usr_ctrl){
     // If a button was just pressed or released...
     if (trellis.readSwitches()) {  
       // go through every button
       for (uint8_t i=0; i<numKeys; i++) {
-        // if it was pressed...
+        
         if (trellis.justPressed(i)) {
+          drum_index = get_drum_index(i);
           
-          // Alternate the LED
-          // need to find the block number
-//          drum_index = get_drum_index(i);
-//          if (drum_index <= -1) {
-//
-//            // if the ctrl button just pressed was already on.
-//            // toggle the bit at the end
-//            if (control_buttons[1-drum_index]) {
-//              control_buttons[1-drum_index] = false;
-//            } else {
-//              control_buttons[1-drum_index] = true;
-//            }
-//            //I need to update the top row here
-//            // fix drum index to 
-//          } 
+          if (drum_index <= -1) { // then it was a control button.
+            
+            ctrl_button_num = 1-drum_index; // toggle the button.
+            control_button_active[ctrl_button_num] = !control_button_active[ctrl_button_num];
+            //I need to update the top row here
+            // fix drum index to 
+          } 
           
           if (trellis.isLED(i)) {
-            sequence[drum_index] = NO_HIT;
-            Serial2.print((char)get_drum_index(i));
+            Serial2.print((char)drum_index);
+            
+            sequence[0][drum_index] = NO_HIT; // have an internal index that we 
             trellis.clrLED(i);
           } else {
-            sequence[drum_index] = HARD;
-            Serial2.print((char)get_drum_index(i));
-            trellis.setLED(i);
+            Serial2.print((char)drum_index);
+            
+            sequence[0][drum_index] = HARD;
+            trellis.setLED(i); // Need a solution for the 
           }
-        } 
+        }
       }
-      // tell the trellis to set the LEDs we requested
       
     }
   }
   trellis.writeDisplay();
 
+  // Listen for beats and update the 
   while(Serial2.available() > 0){
     char temp = (char)Serial2.read();
 //    Serial2.flush();
