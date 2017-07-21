@@ -1,8 +1,6 @@
-//Drum sequencer by James Wagner. For use with arduino mega2560
+// Drum sequencer by James Wagner and Angus Keatinge. For use with arduino mega2560
 
-//////// NOW THE DRUMS
-
-//sequence specs
+// sequence specs
 #define NUMBER_OF_STEPS_PER_BEAT 4
 #define NUMBER_OF_BARS 1
 #define NUMBER_OF_BEATS_PER_BAR 4
@@ -12,7 +10,7 @@
 #define NUMBER_OF_STEPS (NUMBER_OF_STEPS_PER_BEAT*NUMBER_OF_BEATS+REST)
 #define SEQUENCE_LENGTH (NUMBER_OF_STEPS*NUMBER_OF_DRUMS)
 
-//sequence order
+// sequence order
 #define SNARE_OFFSET  0
 #define KICK_OFFSET   1
 #define HAT_OFFSET    2
@@ -21,18 +19,21 @@
 #define RIDE_OFFSET   5
 #define FTOM_OFFSET   6
 
-//hit strengths. Provides ability to accent notes
+// hit strengths in pwm. 
+// Provides ability to accent notes
 #define HARD    255
 #define MED     200
 #define SOFT    180
 #define NO_HIT  0
 
-//interupt pins
-const byte PULSE_IN = 18; // The beats from the pi
+// interupt pins
+  // The beats from the pi, there is no beat / sub-beat distinction here yet.
+const byte PULSE_IN = 18;
 //const byte MUTE_IN = 19; // Will mute/unmute the drums
 
 
-//output drum pins
+// output drum pins
+// why they are in this order I don't know.
 #define SNARE 8
 #define KICK  7
 #define HAT   3
@@ -41,16 +42,16 @@ const byte PULSE_IN = 18; // The beats from the pi
 #define RIDE  5
 #define FTOM  6
 
-//timer
+// timer
 #define CLOCK_SPEED   16*10^6 //16 MHz
 #define PRESCALER     1024
 #define TIMER_RES     (1 / ( CLOCK_SPEED / PRESCALER))
 #define TIMER_TIME    5 //ms
-
 #define TIMER_COUNTS  ((TIMER_TIME*10^-3 / TIMER_RES) -1)
-//#define TIMER_COUNTS 77
 
-//drum times: how long each drum strike is
+// drum times: how long each drum strike is
+// longer strike means harder hit
+// but a longer strike also limits how fast we can hit drums
 #define KICK_TIME   100 //ms
 #define SNARE_TIME  40  //ms  
 #define HAT_TIME    40  //ms
@@ -59,15 +60,12 @@ const byte PULSE_IN = 18; // The beats from the pi
 #define RIDE_TIME   30
 #define FTOM_TIME   50
 
-//#define KICK_TIME   0 //ms
-//#define SNARE_TIME  10  //ms
-//#define HAT_TIME    0  //ms
-//#define CRASH_TIME  0  //ms
-//#define TOM1_TIME   0
-//#define RIDE_TIME   0
-//#define FTOM_TIME   0
 
-//interupt stuff
+/*
+ * James you should put a few sentecnes here explaining how the drum strike timer works.
+ */
+ 
+// Signals whether the drums are currently striking.
 volatile bool kick_active;
 volatile bool snare_active;
 volatile bool hat_active;
@@ -76,6 +74,7 @@ volatile bool tom1_active;
 volatile bool ride_active;
 volatile bool ftom_active;
 
+// Used to count down drum strikes in multiples of 5.
 volatile int s_multiple_of_5;
 volatile int k_multiple_of_5;
 volatile int h_multiple_of_5;
@@ -84,38 +83,53 @@ volatile int t1_multiple_of_5;
 volatile int r_multiple_of_5;
 volatile int ft_multiple_of_5;
 
+// Holds the drum sequence.
+// Each entry is a PWM value for accents.
+// Will need to use progmem for large songs.
 int sequence[16 * 7];
 
-//index to sequence array
+// index to sequence array
+// This is an int between 0 and 15
+// 0, 4, 8 and 12 are the 1st, 2nd, 3rd and 4th beats in a bar respectively.
+// The rest are the sub beats at semi-quaver resolution.
 volatile int seq_count;
-volatile int untz_poll;
 
-volatile bool control_buttons[16];
+// This is set to true in the setup loop.
+// It will be set false only when we are loading in entire sequence from the Pi/computer (for live mode).
+volatile bool usr_ctrl = false;
 
+// Angus: I don't know how this works.
 volatile bool mute_flag;
 
-volatile bool usr_ctrl = false;
-//pwm stuff
+// pwm stuff
+// Angus: I don't know what this is.
 int eraser = 7;
 
-int loop_count = 0;
-
-
+// Angus: I don't know how this works.
 void mute() {
   mute_flag = true;
 }
 
+// Angus: I don't know how this works.
 void unmute() {
   seq_count = 0;
-
   mute_flag = false;
 }
 
+// Angus: I don't know how this works.
 void phase_rst() {
   seq_count = 0;
 }
 
 
+/*
+ * Called whenever there is a beat interrupt.
+ * seq_count tells us where we are in the bar
+ * we check the drum sequence array to see if this beat (or sub-beat) has a drum hit, 
+ *        grab the PWM value and write that out to the pin.
+ * 
+ * Then we increment and mod seq_count to the next beat.
+ */
 void write_drums_high()
 {
 
@@ -184,6 +198,8 @@ void write_drums_high()
 
 }
 
+// This catches the 5ms interrupt
+// It steps all of the active drums -> counting down their strike duration.
 ISR(TIMER1_COMPA_vect)
 {
 
@@ -250,6 +266,7 @@ ISR(TIMER1_COMPA_vect)
   begin_5_timer();
 }
 
+// This ticks over the 5ms interrupt.
 void begin_5_timer()
 {
   TCCR1A = 0;
@@ -262,6 +279,7 @@ void begin_5_timer()
   TIMSK1 |= (1 << OCIE1A);//enable compare interrupt
 }
 
+// Sets up the high frequency pwm to 31kHz -> beyond audible frequency.
 void set_pwm_2_3_5_6_7_8_9_10()
 {
   //timer 3
@@ -343,7 +361,6 @@ void setup() {
   usr_ctrl = true;
   
   // this will clear the drum sequence on the trellis.
-  // 
   Serial2.println('c');
   Serial2.flush();
 }
@@ -501,6 +518,9 @@ void loop() {
   /*
    * This is coming from Jerry's computer via the FTDI
    * Gives us beat times.
+   * 
+   * We've just realised that this doesn't need to be over FTDI
+   * It can just be usb over regualr Serial instead of Serial3.
    */
   while (Serial3.available() > 0) {
     char temp = (char)Serial3.read();
