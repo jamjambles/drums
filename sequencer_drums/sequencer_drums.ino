@@ -340,8 +340,13 @@ void setup() {
 }
 
 
+bool read_drum_sequence = false;
+int sequence_position = 0;
+
 void loop() {
-  //This means there is a new coordinate
+  // This means there is a new coordinate
+  // This is coming from the other mega
+  // updating the drum sequence
   while (Serial2.available() > 0) {
     char in = (char)Serial2.read();
     int coord = (int)in;
@@ -380,16 +385,84 @@ void loop() {
     }
   }
 
-  while (Serial3.available() > 0) {
-    int sequence_position = 0;
-    int sequence_size = 16 * 7;
-    char sequence_char;
+  // This is coming from the Raspberry Pi
+  // Will send a confirmation: 'update'
 
+  int sequence_size = 16 * 7;
+  char sequence_char;
+  
+  while (Serial.available() > 0) {
+    
+    if (sequence_position > sequence_size) {
+      Serial.println("input sequence is too long.");
+      break;
+    }
+    sequence_char = (char)Serial.read();
+//    Serial.print("--- ");
+    Serial.print(sequence_char);
+//    Serial.println(" ---");
+
+
+    if (read_drum_sequence) {
+//      Serial.println("read_drum_sequence == true");
+      switch ((char)sequence_char) {
+        case '0': // no hit
+          sequence[sequence_position] = NO_HIT;
+//          Serial.println("Updated position to a NO_HIT");
+          sequence_position++;
+          break;
+        case '1': // soft hit
+          sequence[sequence_position] = SOFT;
+//          Serial.println("Updated position to a SOFT");
+          sequence_position++;
+          break;
+        case '2': // medium hit
+          sequence[sequence_position] = MED;
+//          Serial.println("Updated position to a MED");
+          sequence_position++;
+          break;
+        case '3': // hard hit
+          sequence[sequence_position] = HARD;
+//          Serial.println("Updated position to a HARD");
+          sequence_position++;
+          break;
+        case 'f': // stop
+          Serial.println("Got an f!!!");
+          read_drum_sequence = false;
+          for(int f = 0; f < 16*7; f++) {
+            Serial.print(sequence[f]);
+          }
+          break;
+        default:
+          Serial.println("dud character, was expecting \'0\', \'1\', \'2\' or \'3\'");
+          read_drum_sequence = false;
+          for(int f = 0; f < 16*7; f++) {
+            Serial.print(sequence[f]);
+          }
+      }
+    } else {
+      Serial.println("read_drum_sequence == false");
+    }
+  
+    if ((char)sequence_char == 'z') {
+      Serial.println("Setting read_drum_seq to true...");
+      read_drum_sequence = true;
+      sequence_position = 0;
+    }
+  
+
+    
+
+  }
+
+  // This is coming from Jerry's computer
+  // Gives us beat times.
+  while (Serial3.available() > 0) {
     char temp = (char)Serial3.read();
     Serial3.flush();
     Serial2.println(temp);
     Serial2.flush();
-    Serial.println(temp);
+    //Serial.println(temp);
     switch (temp) {
       case '1':
         seq_count = 0;
@@ -413,32 +486,6 @@ void loop() {
         break;
 
          // this is the special character to start reading in a drum sequence from the pi
-      case 'z':
-        while (Serial3.available() > 0) {
-          if (sequence_position > sequence_size) {
-            Serial.println("input sequence is too long.");
-            break;
-          }
-          sequence_char = (char)Serial3.read();
-          Serial.println(sequence_char);
-          switch (sequence_char) {
-            case '0': // no hit
-              sequence[sequence_position] = NO_HIT;
-              break;
-            case '1': // soft hit
-              sequence[sequence_position] = SOFT;
-              break;
-            case '2': // medium hit
-              sequence[sequence_position] = MED;
-              break;
-            case '3': // hard hit
-              sequence[sequence_position] = HARD;
-              break;
-            default:
-              Serial.println("dud character, was expecting \'0\', \'1\', \'2\' or \'3\'");
-          }
-          sequence_position++;
-        }
         //        Serial.println(temp);
         break;
       default:
