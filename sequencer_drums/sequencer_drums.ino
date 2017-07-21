@@ -329,29 +329,50 @@ void setup() {
 
   begin_5_timer();
   Serial.println("Setting up the timer...");
-  // The timer fucks around for 4.5 seconds before it works.
-  // If we don't wait here, the drum will be held down for up to 4.5 seconds,
-  // This would probably fry the solenoid driving circuit.
-  delay(4500);
-  Serial.println("Timer is good to go.");
 
+
+  /*
+   * The timer fucks around for 4.5 seconds before it works.
+   * If we don't wait here, the drum will be held down for up to 4.5 seconds,
+   * This would probably fry the solenoid driving circuit.
+   */
+  delay(4500);
+  Serial.println("Timer _should_ have been set up succesfully.");
+  Serial.println("Set up complete: Drums are good to go!");
+
+  usr_ctrl = true;
+  
+  // this will clear the drum sequence on the trellis.
+  // 
   Serial2.println('c');
   Serial2.flush();
 }
 
-
+// These three guys are for reading the drum sequence in from the pi.
 bool read_drum_sequence = false;
-int sequence_position = 0;
+int sequence_position = 0; // initialised to 0
+int sequence_size = 16 * 7; // This is one bar of drum hits, will need to change for songs.
 
 void loop() {
-  // This means there is a new coordinate
-  // This is coming from the other mega
-  // updating the drum sequence
+
+  /* 
+   * This is coming from the other mega updating the drum sequence.
+   * We only update the drum sequence when in user control mode.
+   * there are 7 drums and 16 time slots: so numbers should be from 0 to 111.
+   */
   while (Serial2.available() > 0) {
     char in = (char)Serial2.read();
     int coord = (int)in;
-    //Serial.println(coord);
-    if (coord >= 0) {
+
+   /*
+    * The beats of the bar have HARD accents
+    *      Occurs on beats: 0, 4, 8 and 12.
+    * The 2,3,4 sub beats are automatically set to MED
+    *      Occurs on the rest (ie. all of the sub beats).
+    * This not only sounds much nicer and more human but allows the drums to hit much faster.
+    *      ie. at semi-quaver time instead of just quaver time.
+    */
+    if (coord >= 0 && usr_ctrl) {
       int beat_num = (int)coord / (int)7;
       int accent_num = beat_num % 4;
       switch (accent_num) {
@@ -362,17 +383,28 @@ void loop() {
             sequence[coord] = HARD;
           }
           break;
-        default:
+
+        // These are the sub beats
+        case 1:
+        case 2:
+        case 3:
           if (sequence[coord] != 0) {
             sequence[coord] = 0;
           } else {
             sequence[coord] = MED;
           }
+          break;
       }
 
-      //digitalWrite(SNARE,HIGH);
-      //Serial.println(accent_num);
-      //else control button
+  /*
+   * This is where the special command and control panel buttons are handled.
+   * 
+   * -16: clear drum sequence to zero.
+   * 
+   * TODO:
+   *    - what to do when we click clear on a long, uploaded sequence?
+   *    - any other trellis button that needs to change the drum sequence here?
+   */
     } else {
       switch (coord) {
         case -16:
@@ -380,89 +412,102 @@ void loop() {
           for (int j = 0; j < 16 * 7; j++) {
             sequence[j] = NO_HIT;
           }
-
-      }
-    }
-  }
-
-  // This is coming from the Raspberry Pi
-  // Will send a confirmation: 'update'
-
-  int sequence_size = 16 * 7;
-  char sequence_char;
-  
-  while (Serial.available() > 0) {
-    
-    if (sequence_position > sequence_size) {
-      Serial.println("input sequence is too long.");
-      break;
-    }
-    sequence_char = (char)Serial.read();
-//    Serial.print("--- ");
-    Serial.print(sequence_char);
-//    Serial.println(" ---");
-
-
-    if (read_drum_sequence) {
-//      Serial.println("read_drum_sequence == true");
-      switch ((char)sequence_char) {
-        case '0': // no hit
-          sequence[sequence_position] = NO_HIT;
-//          Serial.println("Updated position to a NO_HIT");
-          sequence_position++;
-          break;
-        case '1': // soft hit
-          sequence[sequence_position] = SOFT;
-//          Serial.println("Updated position to a SOFT");
-          sequence_position++;
-          break;
-        case '2': // medium hit
-          sequence[sequence_position] = MED;
-//          Serial.println("Updated position to a MED");
-          sequence_position++;
-          break;
-        case '3': // hard hit
-          sequence[sequence_position] = HARD;
-//          Serial.println("Updated position to a HARD");
-          sequence_position++;
-          break;
-        case 'f': // stop
-          Serial.println("Got an f!!!");
-          read_drum_sequence = false;
-          for(int f = 0; f < 16*7; f++) {
-            Serial.print(sequence[f]);
-          }
           break;
         default:
-          Serial.println("dud character, was expecting \'0\', \'1\', \'2\' or \'3\'");
-          read_drum_sequence = false;
-          for(int f = 0; f < 16*7; f++) {
-            Serial.print(sequence[f]);
-          }
+          // do nothing
+          break;
+      } // end of switch
+    } // end of if/else
+    
+  } // end of Serial2
+
+
+  /*
+   * This is coming from the Raspberry Pi
+   * The raspberry pi writes the live mode song sequence out over usb Serial
+   * We read it in here and save it to our sequence.
+   * For drum sequence structure, refer to blah...
+   * 
+   * 1) Look for a 'z' which signals the start of the sequence
+   * 2) Read in values (0, 1, 2, 3)
+   * 3) 'f' signals the end of the sequence.
+   * 
+   * 
+   * TODO:
+   *    - raspberry pi will send usr_ctrl flag?
+   *    - Pi send out the sequence length so we can allocate memory.
+   *    - check that the sequence length is factors into 7
+   */
+  char sequence_char;
+  while (Serial.available() > 0) {
+    
+    sequence_char = (char)Serial.read();
+    if (read_drum_sequence) {
+
+      // check if we have overflowed our buffer.
+      if (sequence_position >= sequence_size) {
+        Serial.println("input sequence is too long.");
+        break;
       }
-    } else {
-      Serial.println("read_drum_sequence == false");
+
+      /*
+       * 0 = no hit
+       * 1 = soft hit
+       * 2 = med hit
+       * 3 = hard hit
+       * f = end of sequence
+       * 
+       * TODO:
+       *    - check the sequence length is corrent ocne we have finished reading
+       *    - Fucking progmem shit for big sequences.
+       */
+      switch ((char)sequence_char) {
+        case '0':
+          sequence[sequence_position] = NO_HIT;
+          sequence_position++;
+          break;
+        case '1':
+          sequence[sequence_position] = SOFT;
+          sequence_position++;
+          break;
+        case '2':
+          sequence[sequence_position] = MED;
+          sequence_position++;
+          break;
+        case '3':
+          sequence[sequence_position] = HARD;
+          sequence_position++;
+          break;
+        case 'f':
+          read_drum_sequence = false;
+          break;
+        default:
+          Serial.println("dud character, was expecting '0', '1', '2' or '3'");
+          // I don't know if I should ignore it or if I should exit...
+          read_drum_sequence = false;
+      }
     }
-  
+
+    // 'z' signals the start of the sequence.
+    // The sequence will start to be read in on the next iteration of this loop.
     if ((char)sequence_char == 'z') {
-      Serial.println("Setting read_drum_seq to true...");
       read_drum_sequence = true;
       sequence_position = 0;
     }
-  
-
-    
 
   }
 
-  // This is coming from Jerry's computer
-  // Gives us beat times.
+
+  /*
+   * This is coming from Jerry's computer via the FTDI
+   * Gives us beat times.
+   */
   while (Serial3.available() > 0) {
     char temp = (char)Serial3.read();
     Serial3.flush();
     Serial2.println(temp);
     Serial2.flush();
-    //Serial.println(temp);
+
     switch (temp) {
       case '1':
         seq_count = 0;
@@ -482,11 +527,6 @@ void loop() {
         break;
       case 's':
         write_drums_high();
-        //        Serial.println(temp);
-        break;
-
-         // this is the special character to start reading in a drum sequence from the pi
-        //        Serial.println(temp);
         break;
       default:
         // shit is fucked.
