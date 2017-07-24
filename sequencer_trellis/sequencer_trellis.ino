@@ -110,6 +110,8 @@ volatile int seq_count;
 
 volatile bool usr_ctrl = false;
 
+void(* resetFunc) (void) = 0;
+
 /*
  * This function steps along the visual beat on the top row of the tellis.
  * checks if any of the top row buttons should be on and leaves them on.
@@ -263,6 +265,12 @@ void setup() {
   control_button_active[0] = true;
   trellis.setLED(0);
 
+  for (int i = 0; i < 4; ++i) {
+    for (int j = 0; j < 112; ++j) {
+      drum_sequence[i][j] = '0';
+    }
+  }
+
   
   Serial.println("Setup finished");
   
@@ -270,6 +278,7 @@ void setup() {
 
 // cannot reset this every loop!!!
 int curr_bar = 0;
+int active_bar = 0;
 
 // Everything breaks if there is more than one trellis.writeDisplay() per 30ms
 void loop() {
@@ -314,6 +323,8 @@ void loop() {
               case 4:
                 control_button_active[4] = !control_button_active[4];
                 break;
+              case 15:
+                resetFunc();
               default:
                 break;
             }
@@ -322,7 +333,7 @@ void loop() {
             // if it's a control button I update the light sequence for all bars
             // but I leave the drum sequence alone
             // I handle the bars elsewhere.
-            if (ctrl_button_num > 4) {
+            if (ctrl_button_num > 3) {
               for (int j = 0; j < 4; ++j) {
                 if (trellis.isLED(i)) {
                   light_sequence[j][i] = true;
@@ -343,27 +354,35 @@ void loop() {
             
           // Not a control button
           // Now I update both the light sequence and the drum sequence.
-          } else if ( trellis.isLED(i) ) {
-            drum_sequence[curr_bar][drum_index] = NO_HIT;
-            light_sequence[curr_bar][i] = false;
-          } else if ( !trellis.isLED(i) ) {
-            drum_sequence[curr_bar][drum_index] = HARD;
-            light_sequence[curr_bar][i] = true;
+          // I only sent this to the drum sequencer if it is a drum hit.
+          } else {
+            
+            if ( trellis.isLED(i) ) {
+              if (curr_bar == active_bar) {
+                Serial2.print((char)drum_index);
+              }
+              drum_sequence[curr_bar][drum_index] = NO_HIT;
+              light_sequence[curr_bar][i] = false;
+            } else if ( !trellis.isLED(i) ) {
+              if (curr_bar == active_bar) {
+                Serial2.print((char)drum_index);
+              }
+              drum_sequence[curr_bar][drum_index] = HARD;
+              light_sequence[curr_bar][i] = true;
+            }
           }
           
           /*
            * A key was pressed.
-           * send that info to the drum sequencer and update trellis board.
+           * update trellis board.
            * I do this no matter what key was pressed.
            * 
            * I don't send the info if we're on the wrong bar though
            */
           if (trellis.isLED(i)) {
-            Serial2.print((char)drum_index);
             trellis.clrLED(i);
             light_sequence[curr_bar][i] = false;
           } else {
-            Serial2.print((char)drum_index);
             trellis.setLED(i);
             light_sequence[curr_bar][i] = true;
           }
@@ -400,8 +419,8 @@ void loop() {
         new_beat();
         break;
       case 'c':
-        //flash and clear
-        flash_trellis();
+        // The other trellis has reset.
+        resetFunc();
         break;
       default:
         // shit is fucked.
@@ -424,6 +443,7 @@ void loop() {
 
     // set the light sequence for the bar buttons
     for (int i = 0; i < 4; ++i) {
+      // 
       for (int j = 0; j < 4; ++j) {
         if ( j == curr_bar ) {
           light_sequence[i][j] = true;
@@ -462,6 +482,7 @@ void loop() {
   // check if we need to change the lights to a new bar and update brother duino
   if ( seq_count == 0 && control_button_active[4] == true) { // then we need to find which one it is
 
+    active_bar = curr_bar;
     // turn #5 control button off.
     control_button_active[4] = false;
     trellis.clrLED( map_seq_count_to_untz_index(4) );

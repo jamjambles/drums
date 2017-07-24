@@ -371,8 +371,10 @@ int sequence_position = 0; // initialised to 0
 int sequence_size = 16 * 7; // This is one bar of drum hits, will need to change for songs.
 
 // These three guys are for reading the drum sequence in from the other diuno
-bool read_drum_sequence_duino = false;
+bool reading_drum_sequence_duino = false;
 int sequence_position_duino = 0; // initialised to 0
+
+bool reading_drum_coord = false;
 
 void loop() {
 
@@ -381,19 +383,23 @@ void loop() {
    * We only update the drum sequence when in user control mode.
    * there are 7 drums and 16 time slots: so numbers should be from 0 to 111.
    */
-  while (Serial2.available() > 0) {
+
+  
+  if (Serial2.available() && !reading_drum_sequence_duino) {
+    //read char, is it c
     char in = (char)Serial2.read();
     int coord = (int)in;
-
-   /*
-    * The beats of the bar have HARD accents
-    *      Occurs on beats: 0, 4, 8 and 12.
-    * The 2,3,4 sub beats are automatically set to MED
-    *      Occurs on the rest (ie. all of the sub beats).
-    * This not only sounds much nicer and more human but allows the drums to hit much faster.
-    *      ie. at semi-quaver time instead of just quaver time.
-    */
-    if (coord >= 0 && coord < 112 && usr_ctrl) {
+    
+    if (in == 'z') {
+      Serial.println("starting protocol");
+      reading_drum_sequence_duino = true;
+      sequence_position_duino = 0;
+    } else {
+      
+      // read the coordinate
+      if (coord >= 0 && coord < 112 && usr_ctrl) {
+      Serial.print("recieved a coordinate: ");
+      Serial.println(coord);
       int beat_num = (int)coord / (int)7;
       int accent_num = beat_num % 4;
       switch (accent_num) {
@@ -415,8 +421,91 @@ void loop() {
             sequence[coord] = MED;
           }
           break;
+        }
+      } else {
+        switch (coord) {
+        case -16: // clear drum sequence.
+          Serial.println("restart");
+          for (int j = 0; j < SEQUENCE_LENGTH; j++) {
+            sequence[j] = NO_HIT;
+          }
+          break;
+        }
       }
+    } 
 
+  }
+
+  if (Serial2.available() && reading_drum_sequence_duino) {
+    char sequence_char = (char)Serial2.read();
+        
+        // check if we have overflowed our buffer.
+    if (sequence_position_duino >= SEQUENCE_LENGTH && sequence_char != 'f') {
+      Serial.println("input sequence from arduino is too long. wtf mate");
+    }
+
+
+    switch ((char)sequence_char) {
+      case '0':
+        sequence[sequence_position_duino] = NO_HIT;
+        sequence_position_duino++;
+        break;
+      case '1':
+        sequence[sequence_position_duino] = SOFT;
+        sequence_position_duino++;
+        break;
+      case '2':
+        sequence[sequence_position_duino] = MED;
+        sequence_position_duino++;
+        break;
+      case '3':
+        sequence[sequence_position_duino] = HARD;
+        sequence_position_duino++;
+        break;
+      case 'z':
+        sequence_position_duino = 0;
+        
+      case 'f':
+        reading_drum_sequence_duino = false;
+        sequence_position_duino = 0;
+        
+        // verification print after loading new sequence in.
+        Serial.print("sequence length: ");
+        Serial.println(sequence_position_duino);
+        Serial.println("About to print out new sequence");
+        for (int i = 0; i < 112; ++i) {
+          Serial.print(sequence[i]);
+          Serial.print(' ');
+        }
+        Serial.println("New sequence printed");
+        
+        break;
+      default:
+        Serial.print("dud character, was expecting '0', '1', '2' or '3':    ");
+        Serial.println((int)sequence_char);
+        sequence_position_duino = 0;
+        reading_drum_sequence_duino = false;
+        
+        // I don't know if I should ignore it or if I should exit...
+//        reading_drum_sequence_duino = false;
+    }
+
+    
+
+  }
+      
+   
+
+   /*
+    * The beats of the bar have HARD accents
+    *      Occurs on beats: 0, 4, 8 and 12.
+    * The 2,3,4 sub beats are automatically set to MED
+    *      Occurs on the rest (ie. all of the sub beats).
+    * This not only sounds much nicer and more human but allows the drums to hit much faster.
+    *      ie. at semi-quaver time instead of just quaver time.
+    */
+      
+    
   /*
    * This is where the special command and control panel buttons are handled.
    * 
@@ -426,34 +515,6 @@ void loop() {
    *    - what to do when we click clear on a long, uploaded sequence?
    *    - any other trellis button that needs to change the drum sequence here?
    */
-    } else {
-      char sequence_char;
-      
-      switch (coord) {
-        case -16: // clear drum sequence.
-          for (int j = 0; j < SEQUENCE_LENGTH; j++) {
-            sequence[j] = NO_HIT;
-          }
-          break;
-
-        // load in sequence from trellis
-        case (int)'z': //load in a sequence from Arduino trellis. 'z' is bigger than 112 luckily
-
-          read_drum_sequence_duino == true;
-          // Begin protocol to recieve a sequence from the trellis duino
-          while (Serial2.available() > 0) {
-            sequence_char = (char)Serial2.read();
-
-            // occurs if we have recieved an 'f' (or garbage)
-            if (read_drum_sequence_duino == false) {
-              break;
-            }
-        
-            // check if we have overflowed our buffer.
-            if (sequence_position_duino >= SEQUENCE_LENGTH) {
-              Serial.println("input sequence from arduino is too long. wtf mate");
-              break;
-            }
       
             /*
              * Same protocol as reading in a sequence from the Pi
@@ -461,40 +522,13 @@ void loop() {
              *    - check the sequence length is corrent ocne we have finished reading
              *    - Fucking progmem shit for big sequences.
              */
-            switch ((char)sequence_char) {
-              case '0':
-                sequence[sequence_position_duino] = NO_HIT;
-                sequence_position_duino++;
-                break;
-              case '1':
-                sequence[sequence_position_duino] = SOFT;
-                sequence_position_duino++;
-                break;
-              case '2':
-                sequence[sequence_position_duino] = MED;
-                sequence_position_duino++;
-                break;
-              case '3':
-                sequence[sequence_position_duino] = HARD;
-                sequence_position_duino++;
-                break;
-              case 'f':
-                read_drum_sequence_duino = false;
-                break;
-              default:
-                Serial.println("dud character, was expecting '0', '1', '2' or '3'");
-                // I don't know if I should ignore it or if I should exit...
-                read_drum_sequence_duino = false;
-            }
-          }
-          break;
-        default:
-          // do nothing
-          break;
-      } // end of switch
-    } // end of if/else
-    
-  } // end of Serial2
+
+
+
+
+
+
+
 
 
   /*
