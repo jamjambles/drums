@@ -44,7 +44,7 @@ Adafruit_TrellisSet trellis =  Adafruit_TrellisSet( &matrix0, &matrix1, &matrix2
 #define NO_HIT  '0'
 
 // interupt pins
-const byte PULSE_IN = 18; // The beats from the pi
+#define PULSE_IN 18 // The beats from the pi
 
 
 ////////////////////////////
@@ -117,6 +117,8 @@ volatile bool usr_ctrl = false;
  */
 void new_beat()
 {
+  Serial.print("old beat: ");
+  Serial.println(seq_count);
   trellis.setLED(map_seq_count_to_untz_index(seq_count));
   
   if (!control_button_active[seq_count-1]) {
@@ -131,7 +133,9 @@ void new_beat()
     trellis.clrLED(map_seq_count_to_untz_index(15));
   }
 
-
+  fix_ctrl_btn_display();
+  Serial.print("new beat: ");
+  Serial.println(seq_count);
 
 }
 
@@ -208,6 +212,9 @@ void clear_trellis(void) {
 void fix_ctrl_btn_display(void) {
   for (int i = 0; i < 16; ++i) {
     if (control_button_active[i] == true) {
+      Serial.print("Control button: ");
+      Serial.print(i);
+      Serial.println(" is active");
       // set LED???
     }
   }
@@ -235,6 +242,12 @@ void setup() {
   // This sets the drums to the initial beat.
   seq_count = 0;
 
+  // Set all of these values to false.
+  for (int i = 0; i < 16; ++i) {
+    control_button_active[i] = false;
+  }
+  
+
   // Whenever pin 19 goes from low to high write drums
   // The signal that the raspberry writes out is a very fast pulse, 
   //    so whether this is rising or falling doesn't _really_ matter.
@@ -245,6 +258,11 @@ void setup() {
   
   // Only allow users to press buttons once the setup is complete.
   usr_ctrl = true;
+
+  // Set the 0th bar as being active.
+  control_button_active[0] = true;
+  trellis.setLED(0);
+
   
   Serial.println("Setup finished");
   
@@ -253,6 +271,7 @@ void setup() {
 // cannot reset this every loop!!!
 int curr_bar = 0;
 
+// Everything breaks if there is more than one trellis.writeDisplay() per 30ms
 void loop() {
   
   delay(30); // 30ms delay is required, dont remove me!
@@ -266,6 +285,7 @@ void loop() {
     // This function call communicates via serial with the trellis board and updates all of the trellis state.
     //      ie. isKeyPressed, wasKeyPressed, etc.
     if (trellis.readSwitches()) {
+      Serial.println("Button has been pressed");
       
       // go through every button
       for (uint8_t i=0; i<numKeys; i++) {
@@ -275,59 +295,77 @@ void loop() {
 
           // Is a control button
           if (drum_index <= -1) {
+            Serial.println("was a control button.");
+            Serial.print("Drum index: ");
+            Serial.println(drum_index);
             
-            ctrl_button_num = 1-drum_index; // maps the button code to the array index.
-
+            ctrl_button_num = -1-drum_index; // maps the button code to the array index.
+            Serial.print("ctrl_button_num: ");
+            Serial.println(ctrl_button_num);
+            
             // Which control button is it?
             switch (ctrl_button_num) {
               case 0:
-                control_button_active[0] = true;
-                control_button_active[1] = false;
-                control_button_active[2] = false;
-                control_button_active[3] = false;
-                // set the lights to the new sequence at the end of the bar...
-                // send a message to the drum-duino to update at the end of the bar.
-                // need to handle the setting of the lights and messaging the other duino somewhere else.
-                break;
               case 1:
-                control_button_active[0] = false;
-                control_button_active[1] = true;
-                control_button_active[2] = false;
-                control_button_active[3] = false;
-                break;
               case 2:
-                control_button_active[0] = false;
-                control_button_active[1] = false;
-                control_button_active[2] = true;
-                control_button_active[3] = false;
-                break;
               case 3:
-                control_button_active[0] = false;
-                control_button_active[1] = false;
-                control_button_active[2] = false;
-                control_button_active[3] = true;
+                curr_bar = ctrl_button_num;
                 break;
-                
               case 4:
+                control_button_active[4] = !control_button_active[4];
                 break;
               default:
                 break;
             }
 
 
-          // 
-          } else if (trellis.isLED(i)) {
-            Serial2.print((char)drum_index);
+            // if it's a control button I update the light sequence for all bars
+            // but I leave the drum sequence alone
+            // I handle the bars elsewhere.
+            if (ctrl_button_num > 4) {
+              for (int j = 0; j < 4; ++j) {
+                if (trellis.isLED(i)) {
+                  light_sequence[j][i] = true;
+                } else {
+                  light_sequence[j][i] = false;
+                }
+              }
+
+            } else {
+              for (int j = 0; j < 4; ++j) {
+                if (trellis.isLED(i)) {
+                  light_sequence[j][i] = true;
+                } else {
+                  light_sequence[j][i] = false;
+                }
+              }
+            }
             
-            light_sequence[curr_bar][i] = false;
+          // Not a control button
+          // Now I update both the light sequence and the drum sequence.
+          } else if ( trellis.isLED(i) ) {
             drum_sequence[curr_bar][drum_index] = NO_HIT;
+            light_sequence[curr_bar][i] = false;
+          } else if ( !trellis.isLED(i) ) {
+            drum_sequence[curr_bar][drum_index] = HARD;
+            light_sequence[curr_bar][i] = true;
+          }
+          
+          /*
+           * A key was pressed.
+           * send that info to the drum sequencer and update trellis board.
+           * I do this no matter what key was pressed.
+           * 
+           * I don't send the info if we're on the wrong bar though
+           */
+          if (trellis.isLED(i)) {
+            Serial2.print((char)drum_index);
             trellis.clrLED(i);
+            light_sequence[curr_bar][i] = false;
           } else {
             Serial2.print((char)drum_index);
-
-            light_sequence[curr_bar][i] = true;
-            drum_sequence[curr_bar][drum_index] = HARD;
             trellis.setLED(i);
+            light_sequence[curr_bar][i] = true;
           }
         }
       }
@@ -335,9 +373,6 @@ void loop() {
     }
   }
   
-  // This will update any button presses that have occurred.
-  trellis.writeDisplay();
-
   // Listen for beats and update the 
   // Serial2 is the drum driving arduino
   // 
@@ -374,37 +409,82 @@ void loop() {
     }
   }
 
+  // The active bar has been changed.
+  // There is a discrepancy between the control button array and the current bar.
+  if (control_button_active[curr_bar] == false) {
 
-  // check if we need to change the lights to a new bar and update brother duino
-  if ( seq_count == 15 && control_button_active[curr_bar] == false ) { // then we need to find which one it is
-
-    // set the curr_bar to the new value
+    // update the control_button_active[] array.
     for (int i = 0; i < 4; ++i) {
-      if ( control_button_active[i] == true ) {
-        curr_bar = i;
+      if ( i == curr_bar ) {
+        control_button_active[i] = true;
+      } else {
+        control_button_active[i] = false;
       }
     }
 
-    // change the lights -- done
-    trellis.clear();
+    // set the light sequence for the bar buttons
+    for (int i = 0; i < 4; ++i) {
+      for (int j = 0; j < 4; ++j) {
+        if ( j == curr_bar ) {
+          light_sequence[i][j] = true;
+        } else {
+          light_sequence[i][j] = false;
+        }
+      }
+    }
+
+
+
+    /* If I want to change the lights straight away I need to:
+     *      - update the lights right away -> done
+     *      - change which light_sequence[] is being updated -> done
+     *      - change which drum_sequence[] is being updated -> done
+     *      - stop sending info to the drum_sequencer 
+     *      - at the end of the bar, send all this info to the drum_sequencer
+     *      
+     * It will break if:
+     *      - a control button is pressed at the same time as a drum button.
+     */
+
+    // This loop updates the whole board
+    // Light sequence needs to be up to date.
     for (int j = 0; j < numKeys; ++j) {
       if (light_sequence[curr_bar][j] == true ) {
         trellis.setLED( j );
+      } else {
+        trellis.clrLED( j );
       }
     }
-    
-    // update brother duino
+
+  }
+
+
+  // check if we need to change the lights to a new bar and update brother duino
+  if ( seq_count == 0 && control_button_active[4] == true) { // then we need to find which one it is
+
+    // turn #5 control button off.
+    control_button_active[4] = false;
+    trellis.clrLED( map_seq_count_to_untz_index(4) );
+    light_sequence[0][32] = false;
+    light_sequence[1][32] = false;
+    light_sequence[2][32] = false;
+    light_sequence[3][32] = false;
+
+    // update brother duino at the end of the bar.
     // use the same protocol we used with the pi.
     // 'z' starts reading in
     // 0, 1, 2 and 3 for NO_HIT, SOFT, MED, and HARD respectively.
     // 'f' to end the sequence.
     // This should work, just need to set it up on brother duino and check it out
+    Serial.println("About to send new sequence to brother duino.");
+
     Serial2.print('z');
     for (int j = 0; j < SEQUENCE_LENGTH; ++j) {
-      Serial2.print( drum_sequence[j] );
+      Serial2.print( drum_sequence[curr_bar][j] );
     }
     Serial2.print('f');
 
+    Serial.println("New sequence written to other duino!");
 
   }
   
