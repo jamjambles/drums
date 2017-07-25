@@ -10,6 +10,16 @@
 #define NUMBER_OF_STEPS (NUMBER_OF_STEPS_PER_BEAT*NUMBER_OF_BEATS+REST)
 #define SEQUENCE_LENGTH (NUMBER_OF_STEPS*NUMBER_OF_DRUMS)
 
+// Number of bars in our entire sequence.
+#define NUM_BARS 4
+
+// These are the indexes to the sequence array
+#define BAR_1 0
+#define BAR_2 1
+#define BAR_3 2
+#define BAR_4 3
+
+
 // sequence order
 #define SNARE_OFFSET  0
 #define KICK_OFFSET   1
@@ -86,7 +96,8 @@ volatile int ft_multiple_of_5;
 // Holds the drum sequence.
 // Each entry is a PWM value for accents.
 // Will need to use progmem for large songs.
-int sequence[16 * 7];
+int sequence[NUM_BARS][SEQUENCE_LENGTH] = {0};
+int curr_bar;
 
 // index to sequence array
 // This is an int between 0 and 15
@@ -137,51 +148,51 @@ void write_drums_high()
   {
     bool is_hit = false;
 
-    if (snare_active == false && sequence[seq_count * NUMBER_OF_DRUMS + SNARE_OFFSET] != NO_HIT)
+    if (snare_active == false && sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + SNARE_OFFSET] != NO_HIT)
     {
-      analogWrite(SNARE, sequence[seq_count * NUMBER_OF_DRUMS + SNARE_OFFSET]); //snare
+      analogWrite(SNARE, sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + SNARE_OFFSET]); //snare
       snare_active = true;
       is_hit = true;
     }
 
-    if (kick_active == false && sequence[seq_count * NUMBER_OF_DRUMS + KICK_OFFSET] != NO_HIT)
+    if (kick_active == false && sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + KICK_OFFSET] != NO_HIT)
     {
-      analogWrite(KICK, sequence[seq_count * NUMBER_OF_DRUMS + KICK_OFFSET]); //kick
+      analogWrite(KICK, sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + KICK_OFFSET]); //kick
       kick_active = true;
       is_hit = true;
     }
 
-    if (hat_active == false && sequence[seq_count * NUMBER_OF_DRUMS + HAT_OFFSET] != NO_HIT)
+    if (hat_active == false && sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + HAT_OFFSET] != NO_HIT)
     {
-      analogWrite(HAT, sequence[seq_count * NUMBER_OF_DRUMS + HAT_OFFSET]); //hat
+      analogWrite(HAT, sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + HAT_OFFSET]); //hat
       hat_active = true;
       is_hit = true;
     }
 
-    if (crash_active == false && sequence[seq_count * NUMBER_OF_DRUMS + CRASH_OFFSET] != NO_HIT)
+    if (crash_active == false && sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + CRASH_OFFSET] != NO_HIT)
     {
-      analogWrite(CRASH, sequence[seq_count * NUMBER_OF_DRUMS + CRASH_OFFSET]); //crash
+      analogWrite(CRASH, sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + CRASH_OFFSET]); //crash
       crash_active = true;
       is_hit = true;
     }
 
-    if (tom1_active == false && sequence[seq_count * NUMBER_OF_DRUMS + TOM1_OFFSET] != NO_HIT)
+    if (tom1_active == false && sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + TOM1_OFFSET] != NO_HIT)
     {
-      analogWrite(TOM1, sequence[seq_count * NUMBER_OF_DRUMS + TOM1_OFFSET]); //tom1
+      analogWrite(TOM1, sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + TOM1_OFFSET]); //tom1
       tom1_active = true;
       is_hit = true;
     }
 
-    if (ride_active == false && sequence[seq_count * NUMBER_OF_DRUMS + RIDE_OFFSET] != NO_HIT)
+    if (ride_active == false && sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + RIDE_OFFSET] != NO_HIT)
     {
-      analogWrite(RIDE, sequence[seq_count * NUMBER_OF_DRUMS + RIDE_OFFSET]); //ride
+      analogWrite(RIDE, sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + RIDE_OFFSET]); //ride
       ride_active = true;
       is_hit = true;
     }
 
-    if (ftom_active == false && sequence[seq_count * NUMBER_OF_DRUMS + FTOM_OFFSET] != NO_HIT)
+    if (ftom_active == false && sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + FTOM_OFFSET] != NO_HIT)
     {
-      analogWrite(FTOM, sequence[seq_count * NUMBER_OF_DRUMS + FTOM_OFFSET]); //ftom
+      analogWrite(FTOM, sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + FTOM_OFFSET]); //ftom
       ftom_active = true;
       is_hit = true;
     }
@@ -359,6 +370,7 @@ void setup() {
   Serial.println("Set up complete: Drums are good to go!");
 
   usr_ctrl = true;
+  curr_bar = BAR_1;
   
   // this will clear the drum sequence on the trellis.
   Serial2.println('c');
@@ -368,7 +380,6 @@ void setup() {
 // These three guys are for reading the drum sequence in from the pi.
 bool read_drum_sequence = false;
 int sequence_position = 0; // initialised to 0
-int sequence_size = 16 * 7; // This is one bar of drum hits, will need to change for songs.
 
 // These three guys are for reading the drum sequence in from the other diuno
 bool reading_drum_sequence_duino = false;
@@ -391,23 +402,32 @@ void loop() {
     int coord = (int)in;
     
     if (in == 'z') {
-      Serial.println("starting protocol");
+//      Serial.println("starting protocol");
       reading_drum_sequence_duino = true;
       sequence_position_duino = 0;
     } else {
+
+
       
       // read the coordinate
       if (coord >= 0 && coord < 112 && usr_ctrl) {
-      Serial.print("recieved a coordinate: ");
-      Serial.println(coord);
       int beat_num = (int)coord / (int)7;
       int accent_num = beat_num % 4;
+      
+     /*
+      * The beats of the bar have HARD accents
+      *      Occurs on beats: 0, 4, 8 and 12.
+      * The 2,3,4 sub beats are automatically set to MED
+      *      Occurs on the rest (ie. all of the sub beats).
+      * This not only sounds much nicer and more human but allows the drums to hit much faster.
+      *      ie. at semi-quaver time instead of just quaver time.
+      */
       switch (accent_num) {
         case 0:
-          if (sequence[coord] != 0) {
-            sequence[coord] = 0;
+          if (sequence[curr_bar][coord] != 0) {
+            sequence[curr_bar][coord] = 0;
           } else {
-            sequence[coord] = HARD;
+            sequence[curr_bar][coord] = HARD;
           }
           break;
 
@@ -415,19 +435,30 @@ void loop() {
         case 1:
         case 2:
         case 3:
-          if (sequence[coord] != 0) {
-            sequence[coord] = 0;
+          if (sequence[curr_bar][coord] != 0) {
+            sequence[curr_bar][coord] = 0;
           } else {
-            sequence[coord] = MED;
+            sequence[curr_bar][coord] = MED;
           }
           break;
         }
       } else {
+
+        /*
+         * This is where the special command and control panel buttons are handled.
+         * 
+         * -16: clear drum sequence to zero.
+         * 
+         * TODO:
+         *    - what to do when we click clear on a long, uploaded sequence?
+         *    - any other trellis button that needs to change the drum sequence here?
+         */
+
         switch (coord) {
         case -16: // clear drum sequence.
           Serial.println("restart");
           for (int j = 0; j < SEQUENCE_LENGTH; j++) {
-            sequence[j] = NO_HIT;
+            sequence[curr_bar][j] = NO_HIT;
           }
           break;
         }
@@ -444,22 +475,30 @@ void loop() {
       Serial.println("input sequence from arduino is too long. wtf mate");
     }
 
+    /*
+     * Same protocol as reading in a sequence from the Pi
+     * If there are any Serial.prints in here, 
+     *          it will introduce a lag that makes it sound shit around the change of bar.
+     * TODO:
+     *    - check the sequence length is corrent ocne we have finished reading
+     *    - Fucking progmem shit for big sequences.
+     */
 
     switch ((char)sequence_char) {
       case '0':
-        sequence[sequence_position_duino] = NO_HIT;
+        sequence[curr_bar][sequence_position_duino] = NO_HIT;
         sequence_position_duino++;
         break;
       case '1':
-        sequence[sequence_position_duino] = SOFT;
+        sequence[curr_bar][sequence_position_duino] = SOFT;
         sequence_position_duino++;
         break;
       case '2':
-        sequence[sequence_position_duino] = MED;
+        sequence[curr_bar][sequence_position_duino] = MED;
         sequence_position_duino++;
         break;
       case '3':
-        sequence[sequence_position_duino] = HARD;
+        sequence[curr_bar][sequence_position_duino] = HARD;
         sequence_position_duino++;
         break;
       case 'z':
@@ -467,68 +506,17 @@ void loop() {
         
       case 'f':
         reading_drum_sequence_duino = false;
-        sequence_position_duino = 0;
-        
-        // verification print after loading new sequence in.
-        Serial.print("sequence length: ");
-        Serial.println(sequence_position_duino);
-        Serial.println("About to print out new sequence");
-        for (int i = 0; i < 112; ++i) {
-          Serial.print(sequence[i]);
-          Serial.print(' ');
-        }
-        Serial.println("New sequence printed");
-        
+        sequence_position_duino = 0;        
         break;
+
+        // What should we do here???
       default:
         Serial.print("dud character, was expecting '0', '1', '2' or '3':    ");
         Serial.println((int)sequence_char);
         sequence_position_duino = 0;
-        reading_drum_sequence_duino = false;
-        
-        // I don't know if I should ignore it or if I should exit...
-//        reading_drum_sequence_duino = false;
+        reading_drum_sequence_duino = false;   
     }
-
-    
-
   }
-      
-   
-
-   /*
-    * The beats of the bar have HARD accents
-    *      Occurs on beats: 0, 4, 8 and 12.
-    * The 2,3,4 sub beats are automatically set to MED
-    *      Occurs on the rest (ie. all of the sub beats).
-    * This not only sounds much nicer and more human but allows the drums to hit much faster.
-    *      ie. at semi-quaver time instead of just quaver time.
-    */
-      
-    
-  /*
-   * This is where the special command and control panel buttons are handled.
-   * 
-   * -16: clear drum sequence to zero.
-   * 
-   * TODO:
-   *    - what to do when we click clear on a long, uploaded sequence?
-   *    - any other trellis button that needs to change the drum sequence here?
-   */
-      
-            /*
-             * Same protocol as reading in a sequence from the Pi
-             * TODO:
-             *    - check the sequence length is corrent ocne we have finished reading
-             *    - Fucking progmem shit for big sequences.
-             */
-
-
-
-
-
-
-
 
 
   /*
@@ -554,7 +542,7 @@ void loop() {
     if (read_drum_sequence) {
 
       // check if we have overflowed our buffer.
-      if (sequence_position >= sequence_size) {
+      if (sequence_position >= SEQUENCE_LENGTH) {
         Serial.println("input sequence is too long.");
         break;
       }
@@ -572,19 +560,19 @@ void loop() {
        */
       switch ((char)sequence_char) {
         case '0':
-          sequence[sequence_position] = NO_HIT;
+          sequence[curr_bar][sequence_position] = NO_HIT;
           sequence_position++;
           break;
         case '1':
-          sequence[sequence_position] = SOFT;
+          sequence[curr_bar][sequence_position] = SOFT;
           sequence_position++;
           break;
         case '2':
-          sequence[sequence_position] = MED;
+          sequence[curr_bar][sequence_position] = MED;
           sequence_position++;
           break;
         case '3':
-          sequence[sequence_position] = HARD;
+          sequence[curr_bar][sequence_position] = HARD;
           sequence_position++;
           break;
         case 'f':
