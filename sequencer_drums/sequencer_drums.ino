@@ -32,8 +32,8 @@
 // hit strengths in pwm. 
 // Provides ability to accent notes.
 #define HARD    255
-#define MED     200
-#define SOFT    180
+#define MED     255
+#define SOFT    255
 #define NO_HIT  0
 
 // interupt pins
@@ -130,7 +130,12 @@ void write_drums_high_b()
 {  
   if(mute_flag_b == false)
   { 
-    //Serial.print("in base\n");
+//    Serial.println('b');
+//    Serial.println(seq_count);
+    char cur_seq = (char((seq_count/4) + 1) + '0');
+    Serial.println(cur_seq);
+    Serial2.println(cur_seq);
+    Serial2.flush();
     mute_flag_s = false;  
     bool is_hit = false;
     
@@ -192,11 +197,13 @@ void write_drums_high_b()
 }
 void write_drums_high_s()
 {
-  //Serial.print("in sub \n");
   if(mute_flag_s == false)
   { 
+    Serial.print('s');
+    //Serial.print(seq_count);
+    //Serial.println('s');
     Serial2.println('s');
-    //Serial.print("in sub and not mute \n");
+    Serial2.flush();
     bool is_hit = false;
     
     if(snare_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET] != NO_HIT)
@@ -442,9 +449,6 @@ void setup() {
 
   TCCR1A = 0; //Timer 1 (used by servo lib)
   TCCR1B = 0;
-
-  //attachInterrupt(digitalPinToInterrupt(MUTE_IN),mute,HIGH); //Mute/unmute drums
-  //attachInterrupt(digitalPinToInterrupt(MUTE_IN),unmute,LOW);
 
   // Whenever pin 19 goes from low to high write drums
   attachInterrupt(digitalPinToInterrupt(BASE_BPM_IN),write_drums_high_b,RISING); //Whenever pin 19 goes from low to high write drums
@@ -737,8 +741,8 @@ void loop() {
   while (Serial3.available() > 0) {
     char temp = (char)Serial3.read();
     Serial3.flush();
-    Serial2.println(temp);
-    Serial2.flush();
+    //Serial2.println(temp);
+    //Serial2.flush();
 
     switch (temp) {
       case '1':
