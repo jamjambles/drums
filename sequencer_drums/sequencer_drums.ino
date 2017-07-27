@@ -97,7 +97,7 @@ volatile int ft_multiple_of_5;
 // Holds the drum sequence.
 // Each entry is a PWM value for accents.
 // Will need to use progmem for large songs.
-int sequence[NUM_BARS][SEQUENCE_LENGTH] = {0};
+int sequence[SEQUENCE_LENGTH] = {0};
 int curr_bar;
 
 // index to sequence array
@@ -130,7 +130,7 @@ void write_drums_high_b()
 {  
   if(mute_flag_b == false)
   { 
-    Serial.print("in base\n");
+    //Serial.print("in base\n");
     mute_flag_s = false;  
     bool is_hit = false;
     
@@ -195,7 +195,8 @@ void write_drums_high_s()
   //Serial.print("in sub \n");
   if(mute_flag_s == false)
   { 
-    Serial.print("in sub and not mute \n");
+    Serial2.println('s');
+    //Serial.print("in sub and not mute \n");
     bool is_hit = false;
     
     if(snare_active==false&&sequence[seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET] != NO_HIT)
@@ -492,6 +493,9 @@ void setup() {
   // this will clear the drum sequence on the trellis.
   Serial2.println('c');
   Serial2.flush();
+  // line up the sequence counter on the trellis.
+  Serial2.println('1');
+  Serial2.flush();
 }
 
 // These three guys are for reading the drum sequence in from the pi.
@@ -552,10 +556,10 @@ void loop() {
       */
       switch (accent_num) {
         case 0:
-          if (sequence[curr_bar][coord] != 0) {
-            sequence[curr_bar][coord] = 0;
+          if (sequence[coord] != 0) {
+            sequence[coord] = 0;
           } else {
-            sequence[curr_bar][coord] = HARD;
+            sequence[coord] = HARD;
           }
           break;
 
@@ -563,10 +567,10 @@ void loop() {
         case 1:
         case 2:
         case 3:
-          if (sequence[curr_bar][coord] != 0) {
-            sequence[curr_bar][coord] = 0;
+          if (sequence[coord] != 0) {
+            sequence[coord] = 0;
           } else {
-            sequence[curr_bar][coord] = MED;
+            sequence[coord] = MED;
           }
           break;
         }
@@ -586,7 +590,7 @@ void loop() {
         case -16: // clear drum sequence.
           Serial.println("restart");
           for (int j = 0; j < SEQUENCE_LENGTH; j++) {
-            sequence[curr_bar][j] = NO_HIT;
+            sequence[j] = NO_HIT;
           }
           break;
         }
@@ -614,19 +618,19 @@ void loop() {
 
     switch ((char)sequence_char) {
       case '0':
-        sequence[curr_bar][sequence_position_duino] = NO_HIT;
+        sequence[sequence_position_duino] = NO_HIT;
         sequence_position_duino++;
         break;
       case '1':
-        sequence[curr_bar][sequence_position_duino] = SOFT;
+        sequence[sequence_position_duino] = SOFT;
         sequence_position_duino++;
         break;
       case '2':
-        sequence[curr_bar][sequence_position_duino] = MED;
+        sequence[sequence_position_duino] = MED;
         sequence_position_duino++;
         break;
       case '3':
-        sequence[curr_bar][sequence_position_duino] = HARD;
+        sequence[sequence_position_duino] = HARD;
         sequence_position_duino++;
         break;
       case 'z':
@@ -688,19 +692,19 @@ void loop() {
        */
       switch ((char)sequence_char) {
         case '0':
-          sequence[curr_bar][sequence_position] = NO_HIT;
+          sequence[sequence_position] = NO_HIT;
           sequence_position++;
           break;
         case '1':
-          sequence[curr_bar][sequence_position] = SOFT;
+          sequence[sequence_position] = SOFT;
           sequence_position++;
           break;
         case '2':
-          sequence[curr_bar][sequence_position] = MED;
+          sequence[sequence_position] = MED;
           sequence_position++;
           break;
         case '3':
-          sequence[curr_bar][sequence_position] = HARD;
+          sequence[sequence_position] = HARD;
           sequence_position++;
           break;
         case 'f':
