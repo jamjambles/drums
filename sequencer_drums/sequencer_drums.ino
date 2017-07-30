@@ -73,7 +73,10 @@ const byte MUTE_IN = 20;// Will mute/unmute the drums
 
 
 /*
- * James you should put a few sentecnes here explaining how the drum strike timer works.
+ * There is a timer interrupt which is set for 5ms. This is used to (uniquely) control the duration which each drum is held down for.
+ * When a drum is turned on, via a write_drums_high() call, the timer will begin.
+ * the x_multiple_of_5 variable keeps track of how long the drum has been held on for (multiple of 5ms). 
+ * when this variable equals the predefined drum duration (i.e SNARE_TIME) the drum will be switched off 
  */
  
 // Signals whether the drums are currently striking.
@@ -111,14 +114,24 @@ volatile int seq_count;
 // It will be set false only when we are loading in entire sequence from the Pi/computer (for live mode).
 volatile bool usr_ctrl = false;
 
-// Angus: I don't know how this works.
+/*
+ * mute_flag_b: 'base' beat mute
+ * mute_flag_s: 'sub' beat mute
+ * These flags are used in live mode when a physical footswitch is required to cue the drums in at the beginning of the bar
+ * base beats refer to the 'true' beats returned by the real time beat tracking algo (ibt)
+ * sub beats refer to beats generated via linear interpolation of the base beats. This enables finer resolution for programming 
+ * complex drum patters (16th notes as opposed to quarter notes)
+ * it is unlikely that a human would be able to push the footswitch at the correct time between two subbeats so we distinguish between 
+ * sub and base beats to make it possible. 
+ * When the drums are initially switched on via the footswitch, only the mute_flag_b is set to false. This allows the write_drums_high_b() 
+ * call to occur making the drums start playing at the start of the bar on beat 1. After this intial call the mute_flag_s is set to false 
+ * allowing subsequent write_drums_high_s() calls to occur. 
+ * When the footswitch is pressed again, both mute_flag_b and mute_flag_b are set to true immediately.
+ */
 volatile bool mute_flag_b;
 volatile bool mute_flag_s;
 
 
-// pwm stuff
-// Angus: I don't know what this is.
-int eraser = 7;
 /*
  * Called whenever there is a beat interrupt.
  * seq_count tells us where we are in the bar
@@ -381,6 +394,7 @@ void set_pwm_2_3_5_6_7_8_9_10()
 {
   //timer 3
   int prescaler = 1;
+  int eraser = 7;//erases last 3 bits
   TCCR3B &= ~eraser; //Clear last 3 bits
   TCCR3B |= prescaler; //Change frequency to 31KHz
   //timer 4
@@ -398,8 +412,6 @@ void setup() {
   Serial2.begin(9600); //communicate to the trellis arduino
   Serial3.begin(9600); //receive beats
 
-
-
   // now do the drums
   seq_count = 0;
   pinMode(KICK, OUTPUT);
@@ -413,10 +425,9 @@ void setup() {
   TCCR1A = 0; //Timer 1 (used by servo lib)
   TCCR1B = 0;
 
-  // Whenever pin 19 goes from low to high write drums
-  attachInterrupt(digitalPinToInterrupt(BASE_BPM_IN),write_drums_high_b,RISING); //Whenever pin 19 goes from low to high write drums
-  attachInterrupt(digitalPinToInterrupt(SUB_BPM_IN),write_drums_high_s,RISING); //Whenever pin 18 
-  //unmute();
+  //Interrupt for beats
+  attachInterrupt(digitalPinToInterrupt(BASE_BPM_IN),write_drums_high_b,RISING); //Whenever pin 19 goes from low to high write drums (base)
+  attachInterrupt(digitalPinToInterrupt(SUB_BPM_IN),write_drums_high_s,RISING); //Whenever pin 18 goes from low to high write drums (sub)
 
   kick_active = false;
   snare_active = false;
