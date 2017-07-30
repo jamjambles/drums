@@ -97,7 +97,8 @@ volatile int ft_multiple_of_5;
 // Holds the drum sequence.
 // Each entry is a PWM value for accents.
 // Will need to use progmem for large songs.
-int sequence[SEQUENCE_LENGTH] = {0};
+char sequence[SEQUENCE_LENGTH] = {0};
+
 int curr_bar;
 
 // index to sequence array
@@ -133,7 +134,7 @@ void write_drums_high_b()
 //    Serial.println('b');
 //    Serial.println(seq_count);
     char cur_seq = (char((seq_count/4) + 1) + '0');
-    Serial.println(cur_seq);
+    //Serial.println(cur_seq);
     Serial2.println(cur_seq);
     Serial2.flush();
     mute_flag_s = false;  
@@ -192,14 +193,45 @@ void write_drums_high_b()
          
     seq_count++;
     seq_count = seq_count % NUMBER_OF_STEPS;
+    // This was thrown together pretty quickly
+    // The idea is to write out each beat of the sequence after a beat occurs (like a circular buffer)
+    // The size of the buffer will always be 16*7 but after each beat 4*7 steps will be updated
+    // Todo: can we get the trellis to do this aswell? The sequence should be displayed 
+    
+    char sequence_char;
+    int seq_pos_beat = seq_count-1;
+    while (Serial.available() > 0) {
+      sequence_char = (char)Serial.read();
+      if (seq_pos_beat < 4*7){
+        switch ((char)sequence_char) {
+          case '0':
+            sequence[seq_pos_beat] = NO_HIT;
+            seq_pos_beat++;
+            break;
+          case '1':
+            sequence[seq_pos_beat] = SOFT;
+            seq_pos_beat++;
+            break;
+          case '2':
+            sequence[seq_pos_beat] = MED;
+            seq_pos_beat++;
+            break;
+          case '3':
+            sequence[seq_pos_beat] = HARD;
+            seq_pos_beat++;
+            break;
+          default:
+            Serial.println("dud character, was expecting '0', '1', '2' or '3'");
+        }
+      }
+    }
   }
-
 }
 void write_drums_high_s()
 {
   if(mute_flag_s == false)
   { 
-    Serial.print('s');
+    //Serial.print('s');
     //Serial.print(seq_count);
     //Serial.println('s');
     Serial2.println('s');
@@ -262,75 +294,6 @@ void write_drums_high_s()
     seq_count = seq_count % NUMBER_OF_STEPS;
   }
 }
-
-//
-//void write_drums_high()
-//{
-//
-//  if (mute_flag == false)
-//  {
-//    bool is_hit = false;
-//
-//    if (snare_active == false && sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + SNARE_OFFSET] != NO_HIT)
-//    {
-//      analogWrite(SNARE, sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + SNARE_OFFSET]); //snare
-//      snare_active = true;
-//      is_hit = true;
-//    }
-//
-//    if (kick_active == false && sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + KICK_OFFSET] != NO_HIT)
-//    {
-//      analogWrite(KICK, sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + KICK_OFFSET]); //kick
-//      kick_active = true;
-//      is_hit = true;
-//    }
-//
-//    if (hat_active == false && sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + HAT_OFFSET] != NO_HIT)
-//    {
-//      analogWrite(HAT, sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + HAT_OFFSET]); //hat
-//      hat_active = true;
-//      is_hit = true;
-//    }
-//
-//    if (crash_active == false && sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + CRASH_OFFSET] != NO_HIT)
-//    {
-//      analogWrite(CRASH, sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + CRASH_OFFSET]); //crash
-//      crash_active = true;
-//      is_hit = true;
-//    }
-//
-//    if (tom1_active == false && sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + TOM1_OFFSET] != NO_HIT)
-//    {
-//      analogWrite(TOM1, sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + TOM1_OFFSET]); //tom1
-//      tom1_active = true;
-//      is_hit = true;
-//    }
-//
-//    if (ride_active == false && sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + RIDE_OFFSET] != NO_HIT)
-//    {
-//      analogWrite(RIDE, sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + RIDE_OFFSET]); //ride
-//      ride_active = true;
-//      is_hit = true;
-//    }
-//
-//    if (ftom_active == false && sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + FTOM_OFFSET] != NO_HIT)
-//    {
-//      analogWrite(FTOM, sequence[curr_bar][seq_count * NUMBER_OF_DRUMS + FTOM_OFFSET]); //ftom
-//      ftom_active = true;
-//      is_hit = true;
-//    }
-//    //    if (is_hit) {
-//    //      begin_5_timer();
-//    //    }
-//
-//    // if the control button is on, leave it.
-//
-//    seq_count++;
-//    seq_count = seq_count % NUMBER_OF_STEPS;
-//
-//  }
-
-//}
 
 // This catches the 5ms interrupt
 // It steps all of the active drums -> counting down their strike duration.
@@ -479,7 +442,7 @@ void setup() {
   set_pwm_2_3_5_6_7_8_9_10();
 
   begin_5_timer();
-  Serial.println("Setting up the timer...");
+  Serial.println("timer...");
 
 
   /*
@@ -488,8 +451,8 @@ void setup() {
    * This would probably fry the solenoid driving circuit.
    */
   delay(4500);
-  Serial.println("Timer _should_ have been set up succesfully.");
-  Serial.println("Set up complete: Drums are good to go!");
+  Serial.println("go");
+  //Serial.println("Set up complete: Drums are good to go!");
 
   usr_ctrl = true;
   curr_bar = BAR_1;
@@ -517,13 +480,17 @@ void loop() {
   {
     //Serial.println("drums are active");
     if(mute_flag_b==true){
+      Serial.println('a');
       seq_count = 0; 
       mute_flag_b = false;
     }
   }else{
     //Serial.println("drums are muted");
-    mute_flag_b = true;
-    mute_flag_s = true;
+    //Serial.println('m');
+    if (mute_flag_b == false && mute_flag_s ==false){
+      mute_flag_b = true;
+      mute_flag_s = true;
+    }
   }
   /* 
    * This is coming from the other mega updating the drum sequence.
@@ -648,7 +615,7 @@ void loop() {
         // What should we do here???
       default:
         Serial.print("dud character, was expecting '0', '1', '2' or '3':    ");
-        Serial.println((int)sequence_char);
+        //Serial.println((int)sequence_char);
         sequence_position_duino = 0;
         reading_drum_sequence_duino = false;   
     }
@@ -676,9 +643,9 @@ void loop() {
     
     sequence_char = (char)Serial.read();
     if (read_drum_sequence) {
-
+      
       // check if we have overflowed our buffer.
-      if (sequence_position >= SEQUENCE_LENGTH) {
+      if (sequence_position > SEQUENCE_LENGTH) {
         Serial.println("input sequence is too long.");
         break;
       }
@@ -712,6 +679,7 @@ void loop() {
           sequence_position++;
           break;
         case 'f':
+          Serial.println(sequence_position);
           read_drum_sequence = false;
           break;
         default:
