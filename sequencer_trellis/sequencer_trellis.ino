@@ -415,6 +415,7 @@ void loop() {
         seq_count = 12;
         new_beat();
         break;
+      case 'b':
       case 's':
         new_beat();
         break;
