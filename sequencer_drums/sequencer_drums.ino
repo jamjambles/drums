@@ -131,7 +131,7 @@ volatile bool usr_ctrl = false;
 volatile bool mute_flag_b;
 volatile bool mute_flag_s;
 
-
+int lastbuttonstate;
 /*
  * Called whenever there is a beat interrupt.
  * seq_count tells us where we are in the bar
@@ -234,7 +234,8 @@ void write_drums_high_b()
             seq_pos_beat++;
             break;
           default:
-            Serial.println("dud character, was expecting '0', '1', '2' or '3'");
+            ;
+            //Serial.println("dud character, was expecting '0', '1', '2' or '3'");
         }
       }
     }
@@ -453,7 +454,7 @@ void setup() {
   set_pwm_2_3_5_6_7_8_9_10();
 
   begin_5_timer();
-  Serial.println("timer...");
+  //Serial.println("timer...");
 
 
   /*
@@ -462,7 +463,7 @@ void setup() {
    * This would probably fry the solenoid driving circuit.
    */
   delay(4500);
-  Serial.println("go");
+  //.println("go");
   //Serial.println("Set up complete: Drums are good to go!");
 
   usr_ctrl = true;
@@ -474,6 +475,9 @@ void setup() {
   // line up the sequence counter on the trellis.
   Serial2.println('1');
   Serial2.flush();
+
+  lastbuttonstate = digitalRead(MUTE_IN);
+  
 }
 
 // These three guys are for reading the drum sequence in from the pi.
@@ -486,23 +490,32 @@ int sequence_position_duino = 0; // initialised to 0
 
 bool reading_drum_coord = false;
 
+unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
+unsigned long debounceDelay = 50; 
+
 void loop() {
-  if(digitalRead(MUTE_IN)==LOW)
-  {
-    //Serial.println("drums are active");
-    if(mute_flag_b==true){
-      Serial.println('a');
-      seq_count = 0; 
-      mute_flag_b = false;
-    }
-  }else{
-    //Serial.println("drums are muted");
-    //Serial.println('m');
-    if (mute_flag_b == false && mute_flag_s ==false){
-      mute_flag_b = true;
-      mute_flag_s = true;
-    }
+  //debouncing the mute pin
+  int mutestate = digitalRead(MUTE_IN); //read state of mutepin
+  if (mutestate != lastbuttonstate) { //if the state has changed since the last reading set the lastDebounceTime
+    lastDebounceTime = millis();
   }
+  if ((millis() - lastDebounceTime) > debounceDelay) { //if the last time a bounce occured is greater than debounceDelay perform mute logic
+    if(mutestate==LOW){
+      if(mute_flag_b==true){
+        Serial.println('a'); //write an 'a' to the pi to indicate drums are active
+        seq_count = 0; 
+        mute_flag_b = false;
+      }
+    }else{
+      if (mute_flag_b == false){
+        Serial.println('m'); //write
+        mute_flag_b = true;
+        mute_flag_s = true;
+      }    
+    }
+    
+  }
+  lastbuttonstate = mutestate;
   /* 
    * This is coming from the other mega updating the drum sequence.
    * We only update the drum sequence when in user control mode.
@@ -570,7 +583,7 @@ void loop() {
 
         switch (coord) {
         case -16: // clear drum sequence.
-          Serial.println("restart");
+          //Serial.println("restart");
           for (int j = 0; j < SEQUENCE_LENGTH; j++) {
             sequence[j] = NO_HIT;
           }
@@ -586,7 +599,7 @@ void loop() {
         
         // check if we have overflowed our buffer.
     if (sequence_position_duino >= SEQUENCE_LENGTH && sequence_char != 'f') {
-      Serial.println("input sequence from arduino is too long. wtf mate");
+      //Serial.println("input sequence from arduino is too long. wtf mate");
     }
 
     /*
@@ -625,7 +638,7 @@ void loop() {
 
         // What should we do here???
       default:
-        Serial.print("dud character, was expecting '0', '1', '2' or '3':    ");
+        //Serial.print("dud character, was expecting '0', '1', '2' or '3':    ");
         //Serial.println((int)sequence_char);
         sequence_position_duino = 0;
         reading_drum_sequence_duino = false;   
@@ -657,7 +670,7 @@ void loop() {
       
       // check if we have overflowed our buffer.
       if (sequence_position > SEQUENCE_LENGTH) {
-        Serial.println("input sequence is too long.");
+        //Serial.println("input sequence is too long.");
         break;
       }
 
@@ -694,7 +707,7 @@ void loop() {
           read_drum_sequence = false;
           break;
         default:
-          Serial.println("dud character, was expecting '0', '1', '2' or '3'");
+          //Serial.println("dud character, was expecting '0', '1', '2' or '3'");
           // I don't know if I should ignore it or if I should exit...
           read_drum_sequence = false;
       }
