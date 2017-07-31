@@ -131,6 +131,8 @@ volatile bool usr_ctrl = false;
 volatile bool mute_flag_b;
 volatile bool mute_flag_s;
 
+void(* resetFunc) (void) = 0;
+
 int lastbuttonstate;
 /*
  * Called whenever there is a beat interrupt.
@@ -446,6 +448,7 @@ void setup() {
   Serial2.flush();
 
   lastbuttonstate = digitalRead(MUTE_IN);
+  Serial.println('g');
   
 }
 
@@ -633,24 +636,25 @@ void loop() {
    *    - check that the sequence length is factors into 7
    */
   char sequence_char;
-  while (Serial.available() > 0) {
+  if (Serial.available() > 0) {
     
     sequence_char = (char)Serial.read();
     if (read_drum_sequence || read_beat_sequence) {
-      
+      //Serial.println(sequence_position);
       // check if we have overflowed our buffer.
-      if (read_drum_sequence && sequence_position > SEQUENCE_LENGTH) {
-        read_drum_sequence = false;
-        break;
-        //Serial.println("input sequence is too long.");
-      }
-      if(read_beat_sequence && sequence_position > BEAT_LENGTH){
-        //Serial.println("input sequence is too long.");
-        read_beat_sequence = false;
-        break;
-
-      }
-
+//      if (read_drum_sequence && sequence_position > SEQUENCE_LENGTH) {
+//        read_drum_sequence = false;
+//        break;
+//        //Serial.println("input sequence is too long.");
+//      }
+//      if(read_beat_sequence && sequence_position > SEQUENCE_LENGTH){
+//        //Serial.println("input sequence is too long.");
+//        read_beat_sequence = false;
+//        break;
+//
+//      }
+      // Serial.println(sequence_position);
+      // Serial.flush();
 
       /*
        * 0 = no hit
@@ -663,47 +667,69 @@ void loop() {
        *    - check the sequence length is corrent ocne we have finished reading
        *    - Fucking progmem shit for big sequences.
        */
+      sequence_position = sequence_position % SEQUENCE_LENGTH;
       switch ((char)sequence_char) {
+        
         case '0':
           sequence[sequence_position] = NO_HIT;
           sequence_position++;
+//          Serial2.println('n'); 
           break;
         case '1':
           sequence[sequence_position] = SOFT;
           sequence_position++;
+//          Serial2.println('o'); 
           break;
         case '2':
           sequence[sequence_position] = MED;
           sequence_position++;
+//          Serial2.println('m'); 
           break;
         case '3':
           sequence[sequence_position] = HARD;
           sequence_position++;
+//          Serial2.println('h'); 
           break;
         case 'f':
-          Serial.println(sequence_position);
+          //resetFunc();
+          Serial.println('f'); // indicate end of beat/bar sequennce to trellis
+          Serial.println(sequence_position); // indicate end of beat/bar sequennce to trellis
+          if (read_drum_sequence) {
+            sequence_position = 0;
+          } else if (read_beat_sequence) {
+            
+          }
           read_drum_sequence = false;
           read_beat_sequence = false;
           break;
         default:
-          //Serial.println("dud character, was expecting '0', '1', '2' or '3'");
+          // Serial.println("dud character, was expecting '0', '1', '2' or '3'");
           // I don't know if I should ignore it or if I should exit...
-          read_drum_sequence = false;
-          read_beat_sequence = false;
+          // read_drum_sequence = false;
+          // read_beat_sequence = false;
+          break;
       }
     }
 
     // 'z' signals the start of the sequence.
     // The sequence will start to be read in on the next iteration of this loop.
     if ((char)sequence_char == 'z') {
+      // need to print to Serial2 here too....
+      Serial.println('z'); // indicate a start of bar sequence to trellis
       read_drum_sequence = true;
       read_beat_sequence = false;
       sequence_position = 0;
       
     } else if ((char)sequence_char == 'y') { //y indicates start of beat sequence
+      Serial.println('y'); // indicate a start of beat sequence to trellis
+      Serial.println(sequence_position);
       read_beat_sequence = true;
       read_drum_sequence = false;
-      sequence_position = (seq_count+12)%16;
+      //sequence_position = ((seq_count+11)%16)*7;
+
+    
+    } else if ((char)sequence_char == 'r') { // reset
+      resetFunc();
     }
 
   }
