@@ -40,13 +40,37 @@ const byte MUTE_IN = 20;// Will mute/unmute the drums
 // drum times: how long each drum strike is
 // longer strike means harder hit
 // but a longer strike also limits how fast we can hit drums
-#define KICK_TIME   100 //ms
-#define SNARE_TIME  40  //ms  
-#define HAT_TIME    40  //ms
-#define CRASH_TIME  100  //ms
+#define KICK_TIME   100  
+#define SNARE_TIME  40   
+#define HAT_TIME    40  
+#define CRASH_TIME  100  
 #define TOM1_TIME   50
 #define RIDE_TIME   30
 #define FTOM_TIME   50
+
+// Beat pre delay: how early the PI writes out a beat. This could be set to the drum which takes the longest to strike i.e kick?
+#define BEAT_PRE_DELAY 50
+
+//Strike time: how long the mechanical strike is for each drum
+#define KICK_STRIKE_TIME   0 
+#define SNARE_STRIKE_TIME  0   
+#define HAT_STRIKE_TIME    0  
+#define CRASH_STRIKE_TIME  0  
+#define TOM1_STRIKE_TIME   0
+#define RIDE_STRIKE_TIME   0
+#define FTOM_STRIKE_TIME   0
+
+/*
+ * Predelay: how much time to delay drum before writing it high
+ * DRUM_PREDELAY = BEAT_PRE_DELAY - DRUM_STRIKE_TIME
+ */
+#define KICK_PREDELAY   0 
+#define SNARE_PREDELAY  0   
+#define HAT_PREDELAY    0  
+#define CRASH_PREDELAY  0  
+#define TOM1_PREDELAY   0
+#define RIDE_PREDELAY   0
+#define FTOM_PREDELAY   0
 
 /*
  * There is a timer interrupt which is set for 5ms. This is used to (uniquely) control the duration which each drum is held down for.
@@ -73,6 +97,24 @@ volatile int t1_multiple_of_5;
 volatile int r_multiple_of_5;
 volatile int ft_multiple_of_5;
 
+// Whether drums are in predelay phase or not
+volatile bool kick_pd_active;
+volatile bool snare_pd_active;
+volatile bool hat_pd_active;
+volatile bool crash_pd_active;
+volatile bool tom1_pd_active;
+volatile bool ride_pd_active;
+volatile bool ftom_pd_active;
+
+// Same concept as above but 'pd' refering to predelay counts 
+volatile int s_pd_multiple_of_5;
+volatile int k_pd_multiple_of_5;
+volatile int h_pd_multiple_of_5;
+volatile int c_pd_multiple_of_5;
+volatile int t1_pd_multiple_of_5;
+volatile int r_pd_multiple_of_5;
+volatile int ft_pd_multiple_of_5;
+
 // index to sequence array
 // This is an int between 0 and 15
 // 0, 4, 8 and 12 are the 1st, 2nd, 3rd and 4th beats in a bar respectively.
@@ -96,7 +138,8 @@ volatile int seq_count;
 volatile bool mute_flag_b;
 volatile bool mute_flag_s;
 
-// debounce stuff
+
+// Debounce stuff
 int lastbuttonstate;
 unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
 unsigned long debounceDelay = 50; 
