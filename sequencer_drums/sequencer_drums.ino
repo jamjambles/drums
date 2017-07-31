@@ -9,7 +9,7 @@
 #define REST 0
 #define NUMBER_OF_STEPS (NUMBER_OF_STEPS_PER_BEAT*NUMBER_OF_BEATS+REST)
 #define SEQUENCE_LENGTH (NUMBER_OF_STEPS*NUMBER_OF_DRUMS)
-
+#define BEAT_LENGTH (SEQUENCE_LENGTH/4)
 // Number of bars in our entire sequence.
 #define NUM_BARS 4
 
@@ -206,39 +206,8 @@ void write_drums_high_b()
          
     seq_count++;
     seq_count = seq_count % NUMBER_OF_STEPS;
-    // This was thrown together pretty quickly
-    // The idea is to write out each beat of the sequence after a beat occurs (like a circular buffer)
-    // The size of the buffer will always be 16*7 but after each beat 4*7 steps will be updated
-    // Todo: can we get the trellis to do this aswell? The sequence should be displayed 
     
-    char sequence_char;
-    int seq_pos_beat = seq_count-1;
-    while (Serial.available() > 0) {
-      sequence_char = (char)Serial.read();
-      if (seq_pos_beat < 4*7){
-        switch ((char)sequence_char) {
-          case '0':
-            sequence[seq_pos_beat] = NO_HIT;
-            seq_pos_beat++;
-            break;
-          case '1':
-            sequence[seq_pos_beat] = SOFT;
-            seq_pos_beat++;
-            break;
-          case '2':
-            sequence[seq_pos_beat] = MED;
-            seq_pos_beat++;
-            break;
-          case '3':
-            sequence[seq_pos_beat] = HARD;
-            seq_pos_beat++;
-            break;
-          default:
-            ;
-            //Serial.println("dud character, was expecting '0', '1', '2' or '3'");
-        }
-      }
-    }
+    
   }
 }
 void write_drums_high_s()
@@ -482,6 +451,7 @@ void setup() {
 
 // These three guys are for reading the drum sequence in from the pi.
 bool read_drum_sequence = false;
+bool read_beat_sequence = false;
 int sequence_position = 0; // initialised to 0
 
 // These three guys are for reading the drum sequence in from the other diuno
@@ -666,13 +636,21 @@ void loop() {
   while (Serial.available() > 0) {
     
     sequence_char = (char)Serial.read();
-    if (read_drum_sequence) {
+    if (read_drum_sequence || read_beat_sequence) {
       
       // check if we have overflowed our buffer.
-      if (sequence_position > SEQUENCE_LENGTH) {
-        //Serial.println("input sequence is too long.");
+      if (read_drum_sequence && sequence_position > SEQUENCE_LENGTH) {
+        read_drum_sequence = false;
         break;
+        //Serial.println("input sequence is too long.");
       }
+      if(read_beat_sequence && sequence_position > BEAT_LENGTH){
+        //Serial.println("input sequence is too long.");
+        read_beat_sequence = false;
+        break;
+
+      }
+
 
       /*
        * 0 = no hit
@@ -705,11 +683,13 @@ void loop() {
         case 'f':
           Serial.println(sequence_position);
           read_drum_sequence = false;
+          read_beat_sequence = false;
           break;
         default:
           //Serial.println("dud character, was expecting '0', '1', '2' or '3'");
           // I don't know if I should ignore it or if I should exit...
           read_drum_sequence = false;
+          read_beat_sequence = false;
       }
     }
 
@@ -717,7 +697,13 @@ void loop() {
     // The sequence will start to be read in on the next iteration of this loop.
     if ((char)sequence_char == 'z') {
       read_drum_sequence = true;
+      read_beat_sequence = false;
       sequence_position = 0;
+      
+    } else if ((char)sequence_char == 'y') { //y indicates start of beat sequence
+      read_beat_sequence = true;
+      read_drum_sequence = false;
+      sequence_position = (seq_count+12)%16;
     }
 
   }
