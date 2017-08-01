@@ -1,0 +1,19 @@
+#define NUMBER_OF_STEPS_PER_BEAT 4
+#define NUMBER_OF_BARS 1
+#define NUMBER_OF_BEATS_PER_BAR 1
+#define NUMBER_OF_BEATS (NUMBER_OF_BARS*NUMBER_OF_BEATS_PER_BAR)
+#define NUMBER_OF_DRUMS 7
+#define NUMBER_OF_STEPS (NUMBER_OF_STEPS_PER_BEAT*NUMBER_OF_BEATS)
+#define SEQUENCE_LENGTH (NUMBER_OF_STEPS*NUMBER_OF_DRUMS)
+
+const PROGMEM char sequence[SEQUENCE_LENGTH]  =
+{
+//Order of drums: snare, kick, hat, crash, tom1, ride, floor tom//
+//Accents: HARD, MED, SOFT, NO_HIT
+//snare, kick, hat, crash, tom1, ride, floor tom//
+// BAR 1, 1
+NO_HIT, NO_HIT, HARD, NO_HIT, NO_HIT, NO_HIT, NO_HIT,
+NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT,
+NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT,
+NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT,
+};

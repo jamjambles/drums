@@ -25,15 +25,15 @@
 // hit strengths in pwm. 
 // Provides ability to accent notes.
 #define HARD    (char)255
-#define MED     (char)255
-#define SOFT    (char)255
+#define MED     (char)200
+#define SOFT    (char)180
 #define NO_HIT  (char)0
 
 // interupt pins
 const byte BASE_BPM_IN = 19;
 const byte SUB_BPM_IN = 18;
 const byte MUTE_IN = 20;// Will mute/unmute the drums
-const byte STRIKE = 21;
+const byte STRIKE = A0;
 
 // output drum pins
 // why they are in this order I don't know.
@@ -60,7 +60,7 @@ const byte STRIKE = 21;
 #define HAT_TIME    40  //ms
 #define CRASH_TIME  100  //ms
 #define TOM1_TIME   50
-#define RIDE_TIME   30
+#define RIDE_TIME   100
 #define FTOM_TIME   50
 
 /*
@@ -116,7 +116,7 @@ int lastbuttonstate;
 unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
 unsigned long debounceDelay = 50; 
 
-unsigned long trigger_time;
+long trigger_time;
 volatile bool calib;
 
 const PROGMEM char sequence[SEQUENCE_LENGTH]  =
@@ -124,9 +124,9 @@ const PROGMEM char sequence[SEQUENCE_LENGTH]  =
 //Order of drums: snare, kick, hat, crash, tom1, ride, floor tom//
 //Accents: HARD, MED, SOFT, NO_HIT
 //bar 1, beat 1
-NO_HIT, HARD, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, 
-NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, 
-NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, 
+NO_HIT, NO_HIT, HARD, NO_HIT, NO_HIT, NO_HIT, NO_HIT, 
+NO_HIT, NO_HIT, MED, NO_HIT, NO_HIT, NO_HIT, NO_HIT, 
+NO_HIT, NO_HIT, SOFT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, 
 NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT,
 
 };
@@ -144,7 +144,7 @@ void setup() {
   pinMode(TOM1, OUTPUT);
   pinMode(RIDE, OUTPUT);
   pinMode(FTOM, OUTPUT);
-
+  pinMode(STRIKE, INPUT);
   TCCR1A = 0; //Timer 1 (used by servo lib)
   TCCR1B = 0;
 
@@ -187,6 +187,7 @@ void setup() {
 
   lastbuttonstate = digitalRead(MUTE_IN);
   Serial.println('g');
+  
 }
 
 void loop() {
@@ -213,9 +214,14 @@ void loop() {
   }
   lastbuttonstate = mutestate;
 
+  //if(digitalRead(STRIKE)==HIGH)
+  //  Serial.print('h');
+  
   if(digitalRead(STRIKE) == HIGH && calib == true){
-    Serial.print(millis() - trigger_time);
-    calib == false;
+    long cur = millis();
+    Serial.println(cur - trigger_time);
+    calib = false;
+    Serial.println("finished calib");
   }
 }
 
@@ -223,7 +229,7 @@ void write_drums_high_b()
 {  
   if(mute_flag_b == false)
   { 
-    
+    Serial.println("base");
     mute_flag_s = false;  
     bool is_hit = false;
     

@@ -8,13 +8,18 @@
 #define SEQUENCE_LENGTH (NUMBER_OF_STEPS*NUMBER_OF_DRUMS)
 
 
-const PROGMEM char sequence[SEQUENCE_LENGTH]  =
+const PROGMEM int sequence[SEQUENCE_LENGTH]  =
 {
 //Order of drums: snare, kick, hat, crash, tom1, ride, floor tom//
 //Accents: HARD, MED, SOFT, NO_HIT
 //snare, kick, hat, crash, tom1, ride, floor tom//
 // BAR 1, 1
 
+//1
+NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT,
+NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT,
+NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT,
+NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT,
 //2
 NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT,
 NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT, NO_HIT,

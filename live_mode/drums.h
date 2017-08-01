@@ -1,10 +1,10 @@
 /*
  * These are the accent strengths
  */
-#define HARD    (char)255
-#define MED     (char)255
-#define SOFT    (char)255
-#define NO_HIT  (char)0
+#define HARD    255
+#define MED     255
+#define SOFT    255
+#define NO_HIT  0
 
 // sequence order
 #define SNARE_OFFSET  0
@@ -49,28 +49,28 @@ const byte MUTE_IN = 20;// Will mute/unmute the drums
 #define FTOM_TIME   50
 
 // Beat pre delay: how early the PI writes out a beat. This could be set to the drum which takes the longest to strike i.e kick?
-#define BEAT_PRE_DELAY 50
+#define BEAT_PRE_DELAY 60
 
 //Strike time: how long the mechanical strike is for each drum
-#define KICK_STRIKE_TIME   0 
-#define SNARE_STRIKE_TIME  0   
-#define HAT_STRIKE_TIME    0  
-#define CRASH_STRIKE_TIME  0  
-#define TOM1_STRIKE_TIME   0
-#define RIDE_STRIKE_TIME   0
-#define FTOM_STRIKE_TIME   0
+#define KICK_STRIKE_TIME   55 
+#define SNARE_STRIKE_TIME  30   
+#define HAT_STRIKE_TIME    30  
+#define CRASH_STRIKE_TIME  35  
+#define TOM1_STRIKE_TIME   35
+#define RIDE_STRIKE_TIME   30
+#define FTOM_STRIKE_TIME   35
 
 /*
  * Predelay: how much time to delay drum before writing it high
  * DRUM_PREDELAY = BEAT_PRE_DELAY - DRUM_STRIKE_TIME
  */
-#define KICK_PREDELAY   0 
-#define SNARE_PREDELAY  0   
-#define HAT_PREDELAY    0  
-#define CRASH_PREDELAY  0  
-#define TOM1_PREDELAY   0
-#define RIDE_PREDELAY   0
-#define FTOM_PREDELAY   0
+#define KICK_PREDELAY   (BEAT_PRE_DELAY-KICK_STRIKE_TIME)
+#define SNARE_PREDELAY  (BEAT_PRE_DELAY-SNARE_STRIKE_TIME)   
+#define HAT_PREDELAY    (BEAT_PRE_DELAY-HAT_STRIKE_TIME)  
+#define CRASH_PREDELAY  (BEAT_PRE_DELAY-CRASH_STRIKE_TIME)  
+#define TOM1_PREDELAY   (BEAT_PRE_DELAY-TOM1_STRIKE_TIME)
+#define RIDE_PREDELAY   (BEAT_PRE_DELAY-RIDE_STRIKE_TIME)
+#define FTOM_PREDELAY   (BEAT_PRE_DELAY-FTOM_STRIKE_TIME)
 
 /*
  * There is a timer interrupt which is set for 5ms. This is used to (uniquely) control the duration which each drum is held down for.

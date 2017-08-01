@@ -1,7 +1,6 @@
 // Drum sequencer by James Wagner and Angus Keatinge. For use with arduino mega2560
 
 #include "drums.h"
-#include "calibration.h"
 /*
  * Contains the sequence specs and the sequence itself 
  * imagine.h : Imagine by John Lennon 
@@ -10,13 +9,13 @@
  */
 //#include "imagine.h"
 #include "otherside.h"
-
+//#include "simple.h"
 
 void setup() {
   //setting up the serials
   Serial.begin(9600); //just to print to serial monitor
   
-  seq_count = 0;
+  seq_count = -1;
   pinMode(KICK, OUTPUT);
   pinMode(SNARE, OUTPUT);
   pinMode(HAT, OUTPUT);
@@ -114,43 +113,59 @@ void loop() {
 }
 void beat_interrupt_b(){
   
-  if(mute_flag_b == false){ 
-    mute_flag_s = false;
+  if(mute_flag_b == false){
+    seq_count++;
+    seq_count = seq_count % NUMBER_OF_STEPS;
     
+    mute_flag_s = false;
+    bool no_hit = true;
     // Check the next drums which will be playing and begin predelay timer
     if(pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET) != NO_HIT){
-      snare_pd_active = true;  
+      snare_pd_active = true; 
+      no_hit = false; 
     }
   
     if(pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + KICK_OFFSET) != NO_HIT){
       kick_pd_active = true;  
+      no_hit = false;
     }
   
     if(pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + HAT_OFFSET) != NO_HIT){
-      hat_pd_active = true;  
+      hat_pd_active = true; 
+      no_hit = false; 
     }
   
     if(pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + CRASH_OFFSET) != NO_HIT){
-      crash_pd_active = true;  
+      crash_pd_active = true;
+      no_hit = false;  
     }
   
     if(pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + TOM1_OFFSET) != NO_HIT){
       tom1_pd_active = true;  
+      no_hit = false;
     }
   
     if(pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + RIDE_OFFSET) != NO_HIT){
       ride_pd_active = true;  
+      no_hit = false;
     }
   
     if(pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + FTOM_OFFSET) != NO_HIT){
-      ftom_pd_active = true;  
+      ftom_pd_active = true; 
+      no_hit = false; 
     }
+    //if(no_hit){
+    //  write_drums_high();
+   // }
+    
   }
 }
 
 void beat_interrupt_s(){
   if(mute_flag_s == false){ 
-    
+    seq_count++;
+    seq_count = seq_count % NUMBER_OF_STEPS;
+    //Serial.println(seq_count);
     // Check the next drums which will be playing and begin predelay timer
     if(pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET) != NO_HIT){
       snare_pd_active = true;  
@@ -181,9 +196,9 @@ void beat_interrupt_s(){
     }
   }
 }
-
+/*
 void write_drums_high(){
-  
+  //Serial.println("wrd");
   if(snare_active==false&&pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET) != NO_HIT)
   {     
     analogWrite(SNARE,pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET));   //snare
@@ -225,16 +240,16 @@ void write_drums_high(){
     analogWrite(FTOM,pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + FTOM_OFFSET));
     ftom_active = true;
   }
-  
   seq_count++;
   seq_count = seq_count % NUMBER_OF_STEPS;
     
 }
-
+*/
 // This catches the 5ms interrupt
 // It steps all of the active drums -> counting down their strike duration.
 ISR(TIMER1_COMPA_vect){
   // Strike time
+  //Serial.print("5");
   if (snare_active == true) 
     s_multiple_of_5++; 
   
@@ -258,9 +273,10 @@ ISR(TIMER1_COMPA_vect){
 
   
   // Predelay
-  if (snare_pd_active == true) 
+  if (snare_pd_active == true) {
     s_pd_multiple_of_5++; 
-  
+    //Serial.println("sn");
+  }
   if (kick_pd_active == true)
     k_pd_multiple_of_5++; 
 
@@ -321,39 +337,46 @@ ISR(TIMER1_COMPA_vect){
   if (snare_pd_active == true && s_pd_multiple_of_5 == (SNARE_PREDELAY / TIMER_TIME)) {
     snare_pd_active = false;
     s_pd_multiple_of_5 = 0;
-    write_drums_high();
+    analogWrite(SNARE,255);
+    snare_active = true;
   }
   if (kick_pd_active == true && k_pd_multiple_of_5 == (KICK_PREDELAY / TIMER_TIME)) {
-    analogWrite(KICK, 0);
-    kick_active = false;
+    kick_pd_active = false;
     k_pd_multiple_of_5 = 0;
+    analogWrite(KICK,255);
+    kick_active = true;
   }
   if (hat_pd_active == true && h_pd_multiple_of_5 == (HAT_PREDELAY / TIMER_TIME)) {
-    analogWrite(HAT, 0);
-    hat_active = false;
+    hat_pd_active = false;
     h_pd_multiple_of_5 = 0;
+    analogWrite(HAT,255);
+    hat_active = true;
   }
   if (crash_pd_active == true && c_pd_multiple_of_5 == (CRASH_PREDELAY / TIMER_TIME)) {
-    analogWrite(CRASH, 0);
-    crash_active = false;
+    crash_pd_active = false;
     c_pd_multiple_of_5 = 0;
+    analogWrite(CRASH,255);
+    crash_active = true;
   }
 
   if (tom1_pd_active == true && t1_pd_multiple_of_5 == (TOM1_PREDELAY / TIMER_TIME)) {
-    analogWrite(TOM1, 0);
-    tom1_active = false;
+    tom1_pd_active = false;
     t1_pd_multiple_of_5 = 0;
+    analogWrite(TOM1,255);
+    tom1_active = true;
   }
   if (ride_pd_active == true && r_pd_multiple_of_5 == (RIDE_PREDELAY / TIMER_TIME)) {
-    analogWrite(RIDE, 0);
-    ride_active = false;
+    ride_pd_active = false;
     r_pd_multiple_of_5 = 0;
+    analogWrite(RIDE,255);
+    ride_active = true;
   }
 
   if (ftom_pd_active == true && ft_pd_multiple_of_5 == (FTOM_PREDELAY / TIMER_TIME)) {
-    analogWrite(FTOM, 0);
-    ftom_active = false;
+    ftom_pd_active = false;
     ft_pd_multiple_of_5 = 0;
+    analogWrite(FTOM,255);
+    ftom_active = true;
   }
   
   begin_5_timer();
