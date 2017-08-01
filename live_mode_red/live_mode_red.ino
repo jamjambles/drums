@@ -1,5 +1,4 @@
 // Drum sequencer by James Wagner and Angus Keatinge. For use with arduino mega2560
-
 #include "drums.h"
 /*
  * Contains the sequence specs and the sequence itself 
