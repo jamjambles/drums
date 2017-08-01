@@ -6,6 +6,8 @@
 #define SOFT    255
 #define NO_HIT  0
 
+#define NUMBER_OF_DRUMS 7
+
 // sequence order
 #define SNARE_OFFSET  0
 #define KICK_OFFSET   1
@@ -143,4 +145,13 @@ volatile bool mute_flag_s;
 int lastbuttonstate;
 unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
 unsigned long debounceDelay = 50; 
+
+
+volatile bool pd_active[NUMBER_OF_DRUMS];
+volatile bool strike_active[NUMBER_OF_DRUMS];
+volatile unsigned int pd_5ms_count[NUMBER_OF_DRUMS];
+volatile unsigned int strike_5ms_count[NUMBER_OF_DRUMS];
+volatile unsigned int predelays[NUMBER_OF_DRUMS];
+volatile unsigned int drum_pins[NUMBER_OF_DRUMS];
+volatile unsigned int strike_times[NUMBER_OF_DRUMS];
 
