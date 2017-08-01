@@ -146,8 +146,8 @@ int lastbuttonstate;
 unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
 unsigned long debounceDelay = 50; 
 
-
-volatile bool pd_active[NUMBER_OF_DRUMS];
+// These could be multidimenional arrays?
+volatile bool pd_active[NUMBER_OF_DRUMS]; // I think this should hold the accent rather than being a boolean
 volatile bool strike_active[NUMBER_OF_DRUMS];
 volatile unsigned int pd_5ms_count[NUMBER_OF_DRUMS];
 volatile unsigned int strike_5ms_count[NUMBER_OF_DRUMS];

@@ -28,41 +28,38 @@ void setup() {
   TCCR1B = 0;
 
   //Interrupt for beats
-  //attachInterrupt(digitalPinToInterrupt(BASE_BPM_IN),write_drums_high_b,RISING); //Whenever pin 19 goes from low to high write drums (base)
-  //attachInterrupt(digitalPinToInterrupt(SUB_BPM_IN),write_drums_high_s,RISING); //Whenever pin 18 goes from low to high write drums (sub)
-
   attachInterrupt(digitalPinToInterrupt(BASE_BPM_IN), beat_interrupt_b,RISING); //Whenever pin 19 goes from low to high write drums (base) 
   attachInterrupt(digitalPinToInterrupt(SUB_BPM_IN), beat_interrupt_s,RISING); //Whenever pin 18 goes from low to high write drums (sub)
 
-  for(int i = 0; i < 7; i++){
+  for(int i = 0; i < NUMBER_OF_DRUMS; i++){
     pd_active[i] = false;
     strike_active[i] = false;
     pd_5ms_count[i] = 0;
     strike_5ms_count[i] = 0;
   }
-  predelays[0] = SNARE_PREDELAY;
-  predelays[1] = KICK_PREDELAY;
-  predelays[2] = HAT_PREDELAY;
-  predelays[3] = CRASH_PREDELAY;
-  predelays[4] = TOM1_PREDELAY;
-  predelays[5] = RIDE_PREDELAY;
-  predelays[6] = FTOM_PREDELAY;
+  predelays[SNARE_OFFSET] = SNARE_PREDELAY;
+  predelays[KICK_OFFSET] = KICK_PREDELAY;
+  predelays[HAT_OFFSET] = HAT_PREDELAY;
+  predelays[CRASH_OFFSET] = CRASH_PREDELAY;
+  predelays[TOM1_OFFSET] = TOM1_PREDELAY;
+  predelays[RIDE_OFFSET] = RIDE_PREDELAY;
+  predelays[FTOM_OFFSET] = FTOM_PREDELAY;
 
-  drum_pins[0] = SNARE;
-  drum_pins[1] = KICK;
-  drum_pins[2] = HAT;
-  drum_pins[3] = CRASH;
-  drum_pins[4] = TOM1;
-  drum_pins[5] = RIDE;
-  drum_pins[6] = FTOM;
+  drum_pins[SNARE_OFFSET] = SNARE;
+  drum_pins[KICK_OFFSET] = KICK;
+  drum_pins[HAT_OFFSET] = HAT;
+  drum_pins[CRASH_OFFSET] = CRASH;
+  drum_pins[TOM1_OFFSET] = TOM1;
+  drum_pins[RIDE_OFFSET] = RIDE;
+  drum_pins[FTOM_OFFSET] = FTOM;
 
-  strike_times[0] = SNARE_TIME;
-  strike_times[1] = KICK_TIME;
-  strike_times[2] = HAT_TIME;
-  strike_times[3] = CRASH_TIME;
-  strike_times[4] = TOM1_TIME;
-  strike_times[5] = RIDE_TIME;
-  strike_times[6] = FTOM_TIME;
+  strike_times[SNARE_OFFSET] = SNARE_TIME;
+  strike_times[KICK_OFFSET] = KICK_TIME;
+  strike_times[HAT_OFFSET] = HAT_TIME;
+  strike_times[CRASH_OFFSET] = CRASH_TIME;
+  strike_times[TOM1_OFFSET] = TOM1_TIME;
+  strike_times[RIDE_OFFSET] = RIDE_TIME;
+  strike_times[FTOM_OFFSET] = FTOM_TIME;
   
   // Default to drums muted
   mute_flag_b = true;
@@ -115,7 +112,7 @@ void beat_interrupt_b(){
     
     mute_flag_s = false;
     
-    for(int i = 0; i<7; i++){
+    for(int i = 0; i < NUMBER_OF_DRUMS; i++){
       if(pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + i) != NO_HIT){
         pd_active[i] = true;  
       }
@@ -128,7 +125,7 @@ void beat_interrupt_s(){
     seq_count++;
     seq_count = seq_count % NUMBER_OF_STEPS;
     
-    for(int i = 0; i<7; i++){
+    for(int i = 0; i < NUMBER_OF_DRUMS; i++){
       if(pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + i) != NO_HIT){
         pd_active[i] = true;  
       }
@@ -137,15 +134,16 @@ void beat_interrupt_s(){
 }
 
 ISR(TIMER1_COMPA_vect){
-  // This ISR is called every 5ms
   
-  for(int i = 0; i<7; i++){
+  // This ISR is called every 5ms
+  for(int i = 0; i < NUMBER_OF_DRUMS; i++){
       if(pd_active[i] == true){
         pd_5ms_count[i]++;  
       }
       if(strike_active[i] == true){
         strike_5ms_count[i]++;  
       }
+      // TODO: accents (should be very easy with the arrays)
       if(pd_active[i] == true && pd_5ms_count[i] == predelays[i] / TIMER_TIME){
         pd_active[i] = false;
         pd_5ms_count[i] = 0;
