@@ -74,6 +74,7 @@ const byte MUTE_IN = 20;// Will mute/unmute the drums
 #define RIDE_PREDELAY   (BEAT_PRE_DELAY-RIDE_STRIKE_TIME)
 #define FTOM_PREDELAY   (BEAT_PRE_DELAY-FTOM_STRIKE_TIME)
 
+#define DEBOUNCE_DELAY (unsigned long)50 
 /*
  * There is a timer interrupt which is set for 5ms. This is used to (uniquely) control the duration which each drum is held down for.
  * When a drum is turned on, via a write_drums_high() call, the timer will begin.
@@ -142,16 +143,16 @@ volatile bool mute_flag_s;
 
 
 // Debounce stuff
-int lastbuttonstate;
-unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
-unsigned long debounceDelay = 50; 
+volatile int lastpinstate;
+volatile unsigned long lastdebounce= 0;  // the last time the output pin was toggled
 
 // These could be multidimenional arrays?
 volatile bool pd_active[NUMBER_OF_DRUMS]; // I think this should hold the accent rather than being a boolean
-volatile bool strike_active[NUMBER_OF_DRUMS];
-volatile unsigned int pd_5ms_count[NUMBER_OF_DRUMS];
+volatile bool strike_active[NUMBER_OF_DRUMS]; 
+volatile unsigned int pd_5ms_count[NUMBER_OF_DRUMS]; // These could all be chars ???
 volatile unsigned int strike_5ms_count[NUMBER_OF_DRUMS];
 volatile unsigned int predelays[NUMBER_OF_DRUMS];
 volatile unsigned int drum_pins[NUMBER_OF_DRUMS];
 volatile unsigned int strike_times[NUMBER_OF_DRUMS];
+volatile unsigned int accents[NUMBER_OF_DRUMS];
 

@@ -13,30 +13,18 @@
 
 void setup() {
   //setting up the serials
-  Serial.begin(9600); //just to print to serial monitor
+  Serial.begin(9600); 
   
   seq_count = -1;
-  pinMode(KICK, OUTPUT);
-  pinMode(SNARE, OUTPUT);
-  pinMode(HAT, OUTPUT);
-  pinMode(CRASH, OUTPUT);
-  pinMode(TOM1, OUTPUT);
-  pinMode(RIDE, OUTPUT);
-  pinMode(FTOM, OUTPUT);
 
   TCCR1A = 0; //Timer 1 (used by servo lib)
   TCCR1B = 0;
 
-  //Interrupt for beats
+  // Interrupt for beats
   attachInterrupt(digitalPinToInterrupt(BASE_BPM_IN), beat_interrupt_b,RISING); //Whenever pin 19 goes from low to high write drums (base) 
   attachInterrupt(digitalPinToInterrupt(SUB_BPM_IN), beat_interrupt_s,RISING); //Whenever pin 18 goes from low to high write drums (sub)
-
-  for(int i = 0; i < NUMBER_OF_DRUMS; i++){
-    pd_active[i] = false;
-    strike_active[i] = false;
-    pd_5ms_count[i] = 0;
-    strike_5ms_count[i] = 0;
-  }
+  
+  // Predelay durations
   predelays[SNARE_OFFSET] = SNARE_PREDELAY;
   predelays[KICK_OFFSET] = KICK_PREDELAY;
   predelays[HAT_OFFSET] = HAT_PREDELAY;
@@ -44,15 +32,8 @@ void setup() {
   predelays[TOM1_OFFSET] = TOM1_PREDELAY;
   predelays[RIDE_OFFSET] = RIDE_PREDELAY;
   predelays[FTOM_OFFSET] = FTOM_PREDELAY;
-
-  drum_pins[SNARE_OFFSET] = SNARE;
-  drum_pins[KICK_OFFSET] = KICK;
-  drum_pins[HAT_OFFSET] = HAT;
-  drum_pins[CRASH_OFFSET] = CRASH;
-  drum_pins[TOM1_OFFSET] = TOM1;
-  drum_pins[RIDE_OFFSET] = RIDE;
-  drum_pins[FTOM_OFFSET] = FTOM;
-
+  
+  // Strike times
   strike_times[SNARE_OFFSET] = SNARE_TIME;
   strike_times[KICK_OFFSET] = KICK_TIME;
   strike_times[HAT_OFFSET] = HAT_TIME;
@@ -60,14 +41,38 @@ void setup() {
   strike_times[TOM1_OFFSET] = TOM1_TIME;
   strike_times[RIDE_OFFSET] = RIDE_TIME;
   strike_times[FTOM_OFFSET] = FTOM_TIME;
+
+  // Drum pins
+  drum_pins[SNARE_OFFSET] = SNARE;
+  drum_pins[KICK_OFFSET] = KICK;
+  drum_pins[HAT_OFFSET] = HAT;
+  drum_pins[CRASH_OFFSET] = CRASH;
+  drum_pins[TOM1_OFFSET] = TOM1;
+  drum_pins[RIDE_OFFSET] = RIDE;
+  drum_pins[FTOM_OFFSET] = FTOM;
   
-  // Default to drums muted
+  for(int i = 0; i < NUMBER_OF_DRUMS; i++){
+    // Initially turn predelay and strikes false
+    pd_active[i] = false;
+    strike_active[i] = false;
+    // Set 5ms counters
+    pd_5ms_count[i] = 0;
+    strike_5ms_count[i] = 0;
+    // Set accents
+    accents[i] = 0;
+    // Set all drum pins to be outputs
+    pinMode(drum_pins[i], OUTPUT);
+  }
+
+  
+  // Drums initially muted (OFF)
   mute_flag_b = true;
   mute_flag_s = true;
   
-  //setting pwm frequency
+  // Setting PWM frequency
   set_pwm_2_3_5_6_7_8_9_10();
 
+  // Start the 5ms timer now
   begin_5_timer();
   /*
    * The timer fucks around for 4.5 seconds before it works.
@@ -76,47 +81,21 @@ void setup() {
    */
   delay(4500);
 
-  lastbuttonstate = digitalRead(MUTE_IN);
-  Serial.println('g'); //goos2gobro
+  lastpinstate = digitalRead(MUTE_IN);
+  Serial.println('g'); //good2gobro
 }
 
 void loop() {
-  //debouncing the mute pin
-  int mutestate = digitalRead(MUTE_IN); //read state of mutepin
-  if (mutestate != lastbuttonstate) { //if the state has changed since the last reading set the lastDebounceTime
-    lastDebounceTime = millis();
-  }
-  if ((millis() - lastDebounceTime) > debounceDelay) { //if the last time a bounce occured is greater than debounceDelay perform mute logic
-    if(mutestate==LOW){
-      if(mute_flag_b==true){
-        Serial.println('a'); //write an 'a' to the pi to indicate drums are active
-        seq_count = 0; 
-        mute_flag_b = false;
-      }
-    }else{
-      if (mute_flag_b == false){
-        Serial.println('m'); //write an 'm' to the pi to indicate drums are muted
-        mute_flag_b = true;
-        mute_flag_s = true;
-      }    
-    }
-    
-  }
-  lastbuttonstate = mutestate;
+  // Debouncing the mute pin
+  debounce(MUTE_IN, 50);
 }
+
 void beat_interrupt_b(){
-  
   if(mute_flag_b == false){
     seq_count++;
     seq_count = seq_count % NUMBER_OF_STEPS;
-    
     mute_flag_s = false;
-    
-    for(int i = 0; i < NUMBER_OF_DRUMS; i++){
-      if(pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + i) != NO_HIT){
-        pd_active[i] = true;  
-      }
-    }
+    read_sequence();  
   }
 }
 
@@ -124,39 +103,56 @@ void beat_interrupt_s(){
   if(mute_flag_s == false){ 
     seq_count++;
     seq_count = seq_count % NUMBER_OF_STEPS;
-    
-    for(int i = 0; i < NUMBER_OF_DRUMS; i++){
-      if(pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + i) != NO_HIT){
-        pd_active[i] = true;  
-      }
+    read_sequence(); 
+  }
+}
+
+void read_sequence(){
+  // Reads sequence at current seq_count position
+  for(int i = 0; i < NUMBER_OF_DRUMS; i++){
+    // Check if there is a drum hit due
+    if(pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + i) != NO_HIT){
+      // Store the strength of the hit
+      accents[i] = pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + i);
+      // Start the predelay phase
+      pd_active[i] = true;  
     }
   }
 }
 
 ISR(TIMER1_COMPA_vect){
-  
   // This ISR is called every 5ms
+  
   for(int i = 0; i < NUMBER_OF_DRUMS; i++){
       if(pd_active[i] == true){
+        // Increment predelay counter
         pd_5ms_count[i]++;  
       }
       if(strike_active[i] == true){
+        // Increment strike duration counter
         strike_5ms_count[i]++;  
       }
-      // TODO: accents (should be very easy with the arrays)
+      // TODO: test accents
       if(pd_active[i] == true && pd_5ms_count[i] == predelays[i] / TIMER_TIME){
+        // Write the accent of the array to the drum
+        analogWrite(drum_pins[i], accents[i]);
+        // Turn the predelay flag off
         pd_active[i] = false;
+        // Reset the predelay counter
         pd_5ms_count[i] = 0;
-        analogWrite(drum_pins[i],255);
+        // Set the strike flag on
         strike_active[i] = true;  
       }
       if(strike_active[i] == true && strike_5ms_count[i] == strike_times[i] / TIMER_TIME){
+        // Turn the drum off
         analogWrite(drum_pins[i],0);
+        // Turn the strike flag off
         strike_active[i] = false;
+        // Reset the strike duration counter
         strike_5ms_count[i] = 0;
       }
   }
-  // Keep resetting the timer
+  // Reset the timer
   begin_5_timer();
 }
 
@@ -187,6 +183,30 @@ void set_pwm_2_3_5_6_7_8_9_10(){
   TCCR2B |= prescaler; //Change frequency to 31KHz
 }
 
+void debounce(const byte PIN, unsigned long debounce_delay){
+  int pinstate = digitalRead(PIN); //read state of mutepin
+  if (pinstate != lastpinstate) { //if the state has changed since the last reading set the lastDebounceTime
+    lastdebounce = millis();
+  }
+  if ((millis() - lastdebounce) > debounce_delay) { //if the last time a bounce occured is greater than debounceDelay perform mute logic
+    mute(pinstate);
+  }
+  lastpinstate = pinstate;
+}
 
-
+void mute(int mutestate){
+  if(mutestate == LOW){
+    if(mute_flag_b == true){
+      Serial.println('a'); //write an 'a' to the pi to indicate drums are active
+      seq_count = 0; 
+      mute_flag_b = false;
+    }
+  }else{
+    if (mute_flag_b == false){
+      Serial.println('m'); //write an 'm' to the pi to indicate drums are muted
+      mute_flag_b = true;
+      mute_flag_s = true;
+    }    
+  }
+}
 
