@@ -63,7 +63,6 @@ void setup() {
     // Set all drum pins to be outputs
     pinMode(drum_pins[i], OUTPUT);
   }
-
   
   // Drums initially muted (OFF)
   mute_flag_b = true;
@@ -86,7 +85,7 @@ void setup() {
 }
 
 void loop() {
-  // Debouncing the mute pin
+  // Polling and debouncing the mute pin
   debounce(MUTE_IN, 50);
 }
 
