@@ -48,10 +48,10 @@ const byte MUTE_IN = 20;// Will mute/unmute the drums
 #define CRASH_TIME  100  
 #define TOM1_TIME   50
 #define RIDE_TIME   30
-#define FTOM_TIME   50
+#define FTOM_TIME   30
 
 // Beat pre delay: how early the PI writes out a beat. This could be set to the drum which takes the longest to strike i.e kick?
-#define BEAT_PRE_DELAY 60
+#define BEAT_PRE_DELAY 100
 
 //Strike time: how long the mechanical strike is for each drum
 #define KICK_STRIKE_TIME   55 
@@ -60,7 +60,7 @@ const byte MUTE_IN = 20;// Will mute/unmute the drums
 #define CRASH_STRIKE_TIME  35  
 #define TOM1_STRIKE_TIME   35
 #define RIDE_STRIKE_TIME   30
-#define FTOM_STRIKE_TIME   35
+#define FTOM_STRIKE_TIME   30
 
 /*
  * Predelay: how much time to delay drum before writing it high
@@ -146,7 +146,7 @@ int lastbuttonstate;
 unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
 unsigned long debounceDelay = 50; 
 
-
+/*
 volatile bool pd_active[NUMBER_OF_DRUMS];
 volatile bool strike_active[NUMBER_OF_DRUMS];
 volatile unsigned int pd_5ms_count[NUMBER_OF_DRUMS];
@@ -154,4 +154,4 @@ volatile unsigned int strike_5ms_count[NUMBER_OF_DRUMS];
 volatile unsigned int predelays[NUMBER_OF_DRUMS];
 volatile unsigned int drum_pins[NUMBER_OF_DRUMS];
 volatile unsigned int strike_times[NUMBER_OF_DRUMS];
-
+*/

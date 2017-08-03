@@ -1,7 +1,7 @@
 //Drum sequencer by James Wagner. For use with arduino mega2560
 
 #include "constants.h"
-
+#include "imagine.h"
 //interupt pins
 const byte BASE_BPM_IN = 19; // The beats from the pi
 const byte SUB_BPM_IN =  18;  

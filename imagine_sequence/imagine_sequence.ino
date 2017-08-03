@@ -24,10 +24,10 @@
 
 // hit strengths in pwm. 
 // Provides ability to accent notes.
-#define HARD    (char)255
-#define MED     (char)255
-#define SOFT    (char)255
-#define NO_HIT  (char)0
+#define HARD    255
+#define MED     255
+#define SOFT    255
+#define NO_HIT  0
 
 // interupt pins
 const byte BASE_BPM_IN = 19;
@@ -116,7 +116,7 @@ unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
 unsigned long debounceDelay = 50; 
 
 
-const PROGMEM char sequence[SEQUENCE_LENGTH]  =
+const PROGMEM int sequence[SEQUENCE_LENGTH]  =
 {
 //Order of drums: snare, kick, hat, crash, tom1, ride, floor tom//
 //Accents: HARD, MED, SOFT, NO_HIT

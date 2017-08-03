@@ -8,8 +8,8 @@
  * TODO: add preprocessor macros to choose which header to include
  */
 //#include "imagine.h"
-#include "otherside.h"
-//#include "simple.h"
+//#include "otherside.h"
+#include "simple.h"
 
 void setup() {
   //setting up the serials
@@ -35,7 +35,7 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(SUB_BPM_IN), beat_interrupt_s,RISING); //Whenever pin 18 goes from low to high write drums (sub)
 
   // All drums are initially off
-  /*
+  
   kick_active = false;
   snare_active = false;
   hat_active = false;
@@ -43,13 +43,15 @@ void setup() {
   tom1_active = false;
   ride_active = false;
   ftom_active = false;
-  */
+  
+  /*
   for(int i = 0; i < 7; i++){
     pd_active[i] = false;
     strike_active[i] = false;
     pd_5ms_count[i] = 0;
     strike_5ms_count[i] = 0;
   }
+  
   predelays[0] = SNARE_PREDELAY;
   predelays[1] = KICK_PREDELAY;
   predelays[2] = HAT_PREDELAY;
@@ -73,7 +75,8 @@ void setup() {
   strike_times[4] = TOM1_TIME;
   strike_times[5] = RIDE_TIME;
   strike_times[6] = FTOM_TIME;
-  /*
+  */
+  
   // No predelays at the moment
   kick_pd_active = false;
   snare_pd_active = false;
@@ -82,11 +85,11 @@ void setup() {
   tom1_pd_active = false;
   ride_pd_active = false;
   ftom_pd_active = false;
-  */
+  
   // Default to drums muted
   mute_flag_b = true;
   mute_flag_s = true;
-  /*
+  
   s_multiple_of_5 = 0;
   k_multiple_of_5 = 0;
   h_multiple_of_5 = 0;
@@ -102,7 +105,7 @@ void setup() {
   t1_pd_multiple_of_5 = 0;
   r_pd_multiple_of_5 = 0;
   ft_pd_multiple_of_5 = 0;
-  */
+  
   //setting pwm frequency to 31KHz on pins 2,3,5,6,7,8,9,10
   set_pwm_2_3_5_6_7_8_9_10();
 
@@ -149,13 +152,14 @@ void beat_interrupt_b(){
     seq_count = seq_count % NUMBER_OF_STEPS;
     
     mute_flag_s = false;
-    
+    /*
     for(int i = 0; i<7; i++){
       if(pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + i) != NO_HIT){
         pd_active[i] = true;  
       }
     }
-    /*
+    */
+
     // Check the next drums which will be playing and begin predelay timer
     if(pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET) != NO_HIT){
       snare_pd_active = true; 
@@ -184,21 +188,23 @@ void beat_interrupt_b(){
     if(pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + FTOM_OFFSET) != NO_HIT){
       ftom_pd_active = true; 
     }
-    */
+    
   }
 }
 
 void beat_interrupt_s(){
+  
   if(mute_flag_s == false){ 
     seq_count++;
     seq_count = seq_count % NUMBER_OF_STEPS;
-    
+  /*  
     for(int i = 0; i<7; i++){
       if(pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + i) != NO_HIT){
         pd_active[i] = true;  
       }
     }
-    /*
+    */
+    
     // Check the next drums which will be playing and begin predelay timer
     if(pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + SNARE_OFFSET) != NO_HIT){
       snare_pd_active = true;  
@@ -227,13 +233,13 @@ void beat_interrupt_s(){
     if(pgm_read_word_near(sequence+seq_count*NUMBER_OF_DRUMS + FTOM_OFFSET) != NO_HIT){
       ftom_pd_active = true;  
     }
-    */
+    
   }
 }
 
 ISR(TIMER1_COMPA_vect){
   // This ISR is called every 5ms
-  
+  /*
   for(int i = 0; i<7; i++){
       if(pd_active[i] == true){
         pd_5ms_count[i]++;  
@@ -253,7 +259,8 @@ ISR(TIMER1_COMPA_vect){
         strike_5ms_count[i] = 0;
       }
   }
-  /*
+  */
+  
   // Incrementing the strike duration
   if (snare_active) {
     s_multiple_of_5++; 
@@ -276,8 +283,8 @@ ISR(TIMER1_COMPA_vect){
   if (ftom_active){
     ft_multiple_of_5++; 
   }
-  */
-  /*
+  
+  
   // Incrementing the predelay
   if (snare_pd_active){
     s_pd_multiple_of_5++; 
@@ -300,8 +307,7 @@ ISR(TIMER1_COMPA_vect){
   if (ftom_pd_active){
     ft_pd_multiple_of_5++; 
   }  
-  */
-  /*
+  
   // Writing the drums high after their predelay time
   // TODO: implement accents
   if (snare_pd_active == true && s_pd_multiple_of_5 == (SNARE_PREDELAY / TIMER_TIME)) {
@@ -348,8 +354,7 @@ ISR(TIMER1_COMPA_vect){
     analogWrite(FTOM,255);
     ftom_active = true;
   }
-  */
-  /*
+  
   // Writing the drums low after their defined on time
   if (snare_active == true && s_multiple_of_5 == (SNARE_TIME / TIMER_TIME)) {
     analogWrite(SNARE, 0);
@@ -388,7 +393,7 @@ ISR(TIMER1_COMPA_vect){
     ftom_active = false;
     ft_multiple_of_5 = 0;
   }
-  */
+  
   // Keep resetting the timer
   begin_5_timer();
 }
