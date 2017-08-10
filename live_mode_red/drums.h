@@ -12,7 +12,7 @@
 const byte BASE_BPM_IN = 19; // Pin interrupt
 const byte SUB_BPM_IN = 18; // Pin interrupt
 const byte MUTE_IN = A14;// Will mute/unmute the drums
-const byte BEAT_LIGHT = 15; // Turn led on in time with beat tracker
+const byte BEAT_LIGHT = A15; // Turn led on in time with beat tracker
 
 // output drum pins
 // why they are in this order I don't know.
