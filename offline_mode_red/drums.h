@@ -1,4 +1,25 @@
 #define NUMBER_OF_DRUMS 7
+
+// sequence specs
+#define NUMBER_OF_STEPS_PER_BEAT 4
+#define NUMBER_OF_BARS 1
+#define NUMBER_OF_BEATS_PER_BAR 4
+#define NUMBER_OF_BEATS (NUMBER_OF_BARS*NUMBER_OF_BEATS_PER_BAR)
+#define NUMBER_OF_DRUMS 7
+#define REST 0
+#define NUMBER_OF_STEPS (NUMBER_OF_STEPS_PER_BEAT*NUMBER_OF_BEATS+REST)
+#define SEQUENCE_LENGTH (NUMBER_OF_STEPS*NUMBER_OF_DRUMS)
+#define BEAT_LENGTH (SEQUENCE_LENGTH/4)
+// Number of bars in our entire sequence.
+#define NUM_BARS 4
+
+// These are the indexes to the sequence array
+#define BAR_1 0
+#define BAR_2 1
+#define BAR_3 2
+#define BAR_4 3
+
+
 // sequence order
 #define SNARE_OFFSET  0
 #define KICK_OFFSET   1
@@ -7,12 +28,6 @@
 #define TOM1_OFFSET   4
 #define RIDE_OFFSET   5
 #define FTOM_OFFSET   6
-
-//Pin definitions
-const byte BASE_BPM_IN = 19; // Pin interrupt
-const byte SUB_BPM_IN = 18; // Pin interrupt
-const byte MUTE_IN = A14;// Will mute/unmute the drums
-const byte BEAT_LIGHT = 15; // Turn led on in time with beat tracker
 
 // output drum pins
 // why they are in this order I don't know.
@@ -46,7 +61,7 @@ const byte BEAT_LIGHT = 15; // Turn led on in time with beat tracker
 #define BEAT_PRE_DELAY 60
 
 //Strike time: how long the mechanical strike is for each drum
-#define KICK_STRIKE_TIME   55 
+#define KICK_STRIKE_TIME   50 
 #define SNARE_STRIKE_TIME  30   
 #define HAT_STRIKE_TIME    30  
 #define CRASH_STRIKE_TIME  35  
@@ -73,7 +88,18 @@ const byte BEAT_LIGHT = 15; // Turn led on in time with beat tracker
  * the x_multiple_of_5 variable keeps track of how long the drum has been held on for (multiple of 5ms). 
  * when this variable equals the predefined drum duration (i.e SNARE_TIME) the drum will be switched off 
  */
+
+#define HARD    255
+#define MED     230
+#define SOFT    200
+#define NO_HIT  0
  
+void(* resetFunc) (void) = 0;
+bool reading_drum_coord;
+volatile bool usr_ctrl = false;
+int curr_bar;
+char sequence[SEQUENCE_LENGTH] = {0};
+
 // Signals whether the drums are currently striking.
 volatile bool kick_active;
 volatile bool snare_active;
@@ -115,28 +141,6 @@ volatile int ft_pd_multiple_of_5;
 // 0, 4, 8 and 12 are the 1st, 2nd, 3rd and 4th beats in a bar respectively.
 // The rest are the sub beats at semi-quaver resolution.
 volatile int seq_count;
-
-/*
- * mute_flag_b: 'base' beat mute
- * mute_flag_s: 'sub' beat mute
- * These flags are used in live mode when a physical footswitch is required to cue the drums in at the beginning of the bar
- * base beats refer to the 'true' beats returned by the real time beat tracking algo (ibt)
- * sub beats refer to beats generated via linear interpolation of the base beats. This enables finer resolution for programming 
- * complex drum patters (16th notes as opposed to quarter notes)
- * it is unlikely that a human would be able to push the footswitch at the correct time between two subbeats so we distinguish between 
- * sub and base beats to make it possible. 
- * When the drums are initially switched on via the footswitch, only the mute_flag_b is set to false. This allows the write_drums_high_b() 
- * call to occur making the drums start playing at the start of the bar on beat 1. After this intial call the mute_flag_s is set to false 
- * allowing subsequent write_drums_high_s() calls to occur. 
- * When the footswitch is pressed again, both mute_flag_b and mute_flag_b are set to true immediately.
- */
-volatile bool mute_flag_b;
-volatile bool mute_flag_s;
-
-
-// Debounce stuff
-volatile int lastpinstate;
-volatile unsigned long lastdebounce= 0;  // the last time the output pin was toggled
 
 // These could be multidimenional arrays?
 volatile bool pd_active[NUMBER_OF_DRUMS]; // I think this should hold the accent rather than being a boolean

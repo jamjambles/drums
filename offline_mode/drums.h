@@ -1,4 +1,23 @@
+// sequence specs
+#define NUMBER_OF_STEPS_PER_BEAT 4
+#define NUMBER_OF_BARS 1
+#define NUMBER_OF_BEATS_PER_BAR 4
+#define NUMBER_OF_BEATS (NUMBER_OF_BARS*NUMBER_OF_BEATS_PER_BAR)
 #define NUMBER_OF_DRUMS 7
+#define REST 0
+#define NUMBER_OF_STEPS (NUMBER_OF_STEPS_PER_BEAT*NUMBER_OF_BEATS+REST)
+#define SEQUENCE_LENGTH (NUMBER_OF_STEPS*NUMBER_OF_DRUMS)
+#define BEAT_LENGTH (SEQUENCE_LENGTH/4)
+// Number of bars in our entire sequence.
+#define NUM_BARS 4
+
+// These are the indexes to the sequence array
+#define BAR_1 0
+#define BAR_2 1
+#define BAR_3 2
+#define BAR_4 3
+
+
 // sequence order
 #define SNARE_OFFSET  0
 #define KICK_OFFSET   1
@@ -8,11 +27,12 @@
 #define RIDE_OFFSET   5
 #define FTOM_OFFSET   6
 
-//Pin definitions
-const byte BASE_BPM_IN = 19; // Pin interrupt
-const byte SUB_BPM_IN = 18; // Pin interrupt
-const byte MUTE_IN = A14;// Will mute/unmute the drums
-const byte BEAT_LIGHT = 15; // Turn led on in time with beat tracker
+// hit strengths in pwm. 
+// Provides ability to accent notes.
+#define HARD    255
+#define MED     230
+#define SOFT    200
+#define NO_HIT  0
 
 // output drum pins
 // why they are in this order I don't know.
@@ -34,39 +54,15 @@ const byte BEAT_LIGHT = 15; // Turn led on in time with beat tracker
 // drum times: how long each drum strike is
 // longer strike means harder hit
 // but a longer strike also limits how fast we can hit drums
-#define KICK_TIME   100  
-#define SNARE_TIME  40   
-#define HAT_TIME    40  
-#define CRASH_TIME  100  
+#define KICK_TIME   100 //ms
+#define SNARE_TIME  40  //ms  
+#define HAT_TIME    40  //ms
+#define CRASH_TIME  100  //ms
 #define TOM1_TIME   50
 #define RIDE_TIME   30
 #define FTOM_TIME   50
 
-// Beat pre delay: how early the PI writes out a beat. This could be set to the drum which takes the longest to strike i.e kick?
-#define BEAT_PRE_DELAY 60
 
-//Strike time: how long the mechanical strike is for each drum
-#define KICK_STRIKE_TIME   55 
-#define SNARE_STRIKE_TIME  30   
-#define HAT_STRIKE_TIME    30  
-#define CRASH_STRIKE_TIME  35  
-#define TOM1_STRIKE_TIME   35
-#define RIDE_STRIKE_TIME   30
-#define FTOM_STRIKE_TIME   35
-
-/*
- * Predelay: how much time to delay drum before writing it high
- * DRUM_PREDELAY = BEAT_PRE_DELAY - DRUM_STRIKE_TIME
- */
-#define KICK_PREDELAY   (BEAT_PRE_DELAY-KICK_STRIKE_TIME)
-#define SNARE_PREDELAY  (BEAT_PRE_DELAY-SNARE_STRIKE_TIME)   
-#define HAT_PREDELAY    (BEAT_PRE_DELAY-HAT_STRIKE_TIME)  
-#define CRASH_PREDELAY  (BEAT_PRE_DELAY-CRASH_STRIKE_TIME)  
-#define TOM1_PREDELAY   (BEAT_PRE_DELAY-TOM1_STRIKE_TIME)
-#define RIDE_PREDELAY   (BEAT_PRE_DELAY-RIDE_STRIKE_TIME)
-#define FTOM_PREDELAY   (BEAT_PRE_DELAY-FTOM_STRIKE_TIME)
-
-#define DEBOUNCE_DELAY (unsigned long)50 
 /*
  * There is a timer interrupt which is set for 5ms. This is used to (uniquely) control the duration which each drum is held down for.
  * When a drum is turned on, via a write_drums_high() call, the timer will begin.
@@ -92,29 +88,22 @@ volatile int t1_multiple_of_5;
 volatile int r_multiple_of_5;
 volatile int ft_multiple_of_5;
 
-// Whether drums are in predelay phase or not
-volatile bool kick_pd_active;
-volatile bool snare_pd_active;
-volatile bool hat_pd_active;
-volatile bool crash_pd_active;
-volatile bool tom1_pd_active;
-volatile bool ride_pd_active;
-volatile bool ftom_pd_active;
+// Holds the drum sequence.
+// Each entry is a PWM value for accents.
+// Will need to use progmem for large songs.
+char sequence[SEQUENCE_LENGTH] = {0};
 
-// Same concept as above but 'pd' refering to predelay counts 
-volatile int s_pd_multiple_of_5;
-volatile int k_pd_multiple_of_5;
-volatile int h_pd_multiple_of_5;
-volatile int c_pd_multiple_of_5;
-volatile int t1_pd_multiple_of_5;
-volatile int r_pd_multiple_of_5;
-volatile int ft_pd_multiple_of_5;
+int curr_bar;
 
 // index to sequence array
 // This is an int between 0 and 15
 // 0, 4, 8 and 12 are the 1st, 2nd, 3rd and 4th beats in a bar respectively.
 // The rest are the sub beats at semi-quaver resolution.
 volatile int seq_count;
+
+// This is set to true in the setup loop.
+// It will be set false only when we are loading in entire sequence from the Pi/computer (for live mode).
+volatile bool usr_ctrl = false;
 
 /*
  * mute_flag_b: 'base' beat mute
@@ -130,21 +119,14 @@ volatile int seq_count;
  * allowing subsequent write_drums_high_s() calls to occur. 
  * When the footswitch is pressed again, both mute_flag_b and mute_flag_b are set to true immediately.
  */
-volatile bool mute_flag_b;
-volatile bool mute_flag_s;
 
-
-// Debounce stuff
-volatile int lastpinstate;
-volatile unsigned long lastdebounce= 0;  // the last time the output pin was toggled
-
-// These could be multidimenional arrays?
-volatile bool pd_active[NUMBER_OF_DRUMS]; // I think this should hold the accent rather than being a boolean
-volatile bool strike_active[NUMBER_OF_DRUMS]; 
-volatile unsigned int pd_5ms_count[NUMBER_OF_DRUMS]; // These could all be chars ???
-volatile unsigned int strike_5ms_count[NUMBER_OF_DRUMS];
-volatile unsigned int predelays[NUMBER_OF_DRUMS];
-volatile unsigned int drum_pins[NUMBER_OF_DRUMS];
-volatile unsigned int strike_times[NUMBER_OF_DRUMS];
-volatile unsigned int accents[NUMBER_OF_DRUMS];
-
+void(* resetFunc) (void) = 0;
+bool reading_drum_coord;
+/*
+ * Called whenever there is a beat interrupt.
+ * seq_count tells us where we are in the bar
+ * we check the drum sequence array to see if this beat (or sub-beat) has a drum hit, 
+ *        grab the PWM value and write that out to the pin.
+ * 
+ * Then we increment and mod seq_count to the next beat.
+ */

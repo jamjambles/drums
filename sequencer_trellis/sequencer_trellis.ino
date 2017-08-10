@@ -119,8 +119,8 @@ void(* resetFunc) (void) = 0;
  */
 void new_beat()
 {
-  Serial.print("old beat: ");
-  Serial.println(seq_count);
+  //Serial.print("old beat: ");
+  //Serial.println(seq_count);
   trellis.setLED(map_seq_count_to_untz_index(seq_count));
   
   if (!control_button_active[seq_count-1]) {
@@ -136,8 +136,8 @@ void new_beat()
   }
 
   fix_ctrl_btn_display();
-  Serial.print("new beat: ");
-  Serial.println(seq_count);
+  //Serial.print("new beat: ");
+  //Serial.println(seq_count);
 
 }
 
@@ -214,9 +214,9 @@ void clear_trellis(void) {
 void fix_ctrl_btn_display(void) {
   for (int i = 0; i < 16; ++i) {
     if (control_button_active[i] == true) {
-      Serial.print("Control button: ");
-      Serial.print(i);
-      Serial.println(" is active");
+      //Serial.print("Control button: ");
+      //Serial.print(i);
+      //Serial.println(" is active");
       // set LED???
     }
   }
@@ -294,7 +294,7 @@ void loop() {
     // This function call communicates via serial with the trellis board and updates all of the trellis state.
     //      ie. isKeyPressed, wasKeyPressed, etc.
     if (trellis.readSwitches()) {
-      Serial.println("Button has been pressed");
+      //Serial.println("Button has been pressed");
       
       // go through every button
       for (uint8_t i=0; i<numKeys; i++) {
@@ -304,14 +304,14 @@ void loop() {
 
           // Is a control button
           if (drum_index <= -1) {
-            Serial.println("was a control button.");
-            Serial.print("Drum index: ");
-            Serial.println(drum_index);
+//            Serial.println("was a control button.");
+//            Serial.print("Drum index: ");
+//            Serial.println(drum_index);
             
             ctrl_button_num = -1-drum_index; // maps the button code to the array index.
-            Serial.print("ctrl_button_num: ");
-            Serial.println(ctrl_button_num);
-            
+//            Serial.print("ctrl_button_num: ");
+//            Serial.println(ctrl_button_num);
+//            
             // Which control button is it?
             switch (ctrl_button_num) {
               case 0:
@@ -324,6 +324,7 @@ void loop() {
                 control_button_active[4] = !control_button_active[4];
                 break;
               case 15:
+                Serial2.println('c');
                 resetFunc();
               default:
                 break;
@@ -498,15 +499,15 @@ void loop() {
     // 0, 1, 2 and 3 for NO_HIT, SOFT, MED, and HARD respectively.
     // 'f' to end the sequence.
     // This should work, just need to set it up on brother duino and check it out
-    Serial.println("About to send new sequence to brother duino.");
+    //Serial.println("About to send new sequence to brother duino.");
 
-    Serial2.print('z');
-    for (int j = 0; j < SEQUENCE_LENGTH; ++j) {
-      Serial2.print( drum_sequence[curr_bar][j] );
-    }
-    Serial2.print('f');
+//    Serial2.print('z');
+//    for (int j = 0; j < SEQUENCE_LENGTH; ++j) {
+//      Serial2.print( drum_sequence[curr_bar][j] );
+//    }
+//    Serial2.print('f');
 
-    Serial.println("New sequence written to other duino!");
+    //Serial.println("New sequence written to other duino!");
 
   }
   

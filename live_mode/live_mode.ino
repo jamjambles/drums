@@ -7,9 +7,9 @@
  * otherside.h: Otherside by RHCP
  * TODO: add preprocessor macros to choose which header to include
  */
-//#include "imagine.h"
+#include "imagine.h"
 //#include "otherside.h"
-#include "simple.h"
+//#include "simple.h"
 
 void setup() {
   //setting up the serials
@@ -148,6 +148,7 @@ void loop() {
 void beat_interrupt_b(){
   
   if(mute_flag_b == false){
+    Serial.println("base");
     seq_count++;
     seq_count = seq_count % NUMBER_OF_STEPS;
     
@@ -195,6 +196,7 @@ void beat_interrupt_b(){
 void beat_interrupt_s(){
   
   if(mute_flag_s == false){ 
+    Serial.println("sub");
     seq_count++;
     seq_count = seq_count % NUMBER_OF_STEPS;
   /*  

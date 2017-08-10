@@ -6,9 +6,10 @@
  * otherside.h: Otherside by RHCP
  * TODO: add preprocessor macros to choose which header to include
  */
-//#include "imagine.h"
-#include "otherside.h"
+#include "imagine.h"
+//#include "otherside.h"
 //#include "simple.h"
+//#include "island_in_the_sun.h"
 
 void setup() {
   //setting up the serials
@@ -62,6 +63,8 @@ void setup() {
     // Set all drum pins to be outputs
     pinMode(drum_pins[i], OUTPUT);
   }
+
+  
   
   // Drums initially muted (OFF)
   mute_flag_b = true;

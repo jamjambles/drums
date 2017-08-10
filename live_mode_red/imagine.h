@@ -1,3 +1,4 @@
+#include "accents.h"
 // sequence specs
 #define NUMBER_OF_STEPS_PER_BEAT 4
 #define NUMBER_OF_BARS 48
@@ -8,7 +9,7 @@
 #define SEQUENCE_LENGTH (NUMBER_OF_STEPS*NUMBER_OF_DRUMS)
 
 //sequence
-const PROGMEM char sequence[SEQUENCE_LENGTH]  =
+const PROGMEM int sequence[SEQUENCE_LENGTH]  =
 {
 //Order of drums: snare, kick, hat, crash, tom1, ride, floor tom//
 //Accents: HARD, MED, SOFT, NO_HIT
